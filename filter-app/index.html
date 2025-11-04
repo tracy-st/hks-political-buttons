@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Political Buttons — Color Browser</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- PapaParse CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Political Buttons — Color Browser</h1>
+    <p class="subtitle">Browse images and their top colors (data/colors_output.csv)</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <div class="control-row">
+        <label>Color picker: <input id="colorPicker" type="color" value="#ff0000"></label>
+        <label>Tolerance: <input id="tolerance" type="range" min="0" max="255" value="60"></label>
+        <span id="tolValue">60</span>
+        <button id="applyColorFilter">Apply color filter</button>
+        <button id="clearFilters">Clear</button>
+      </div>
+      <div class="control-row">
+        <label>Color name: 
+          <select id="colorNameFilter">
+            <option value="">-- any --</option>
+            <option>red</option>
+            <option>orange</option>
+            <option>yellow</option>
+            <option>green</option>
+            <option>cyan</option>
+            <option>blue</option>
+            <option>purple</option>
+            <option>magenta</option>
+            <option>pink</option>
+            <option>brown</option>
+            <option>gray</option>
+            <option>black</option>
+            <option>white</option>
+          </select>
+        </label>
+
+        <label>Show per page: 
+          <select id="perPage">
+            <option value="36">36</option>
+            <option value="60" selected>60</option>
+            <option value="120">120</option>
+          </select>
+        </label>
+
+        <label>Search hex: <input id="searchHex" placeholder="#rrggbb or rrggbb"></label>
+        <button id="applySearch">Search</button>
+      </div>
+    </section>
+
+    <section class="grid-wrap">
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <section class="pagination">
+      <button id="prevPage">Prev</button>
+      <span id="pageInfo">Page 1</span>
+      <button id="nextPage">Next</button>
+    </section>
+  </main>
+
+  <!-- Detail modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <button id="closeModal" class="close">×</button>
+      <div class="modal-body">
+        <img id="modalImage" src="" alt="full image">
+        <div id="modalDetails" class="details"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <small>Uses <a href="https://www.papaparse.com/" target="_blank">PapaParse</a> to load CSV.</small>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
