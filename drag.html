@@ -119,7 +119,7 @@
         card.draggable = true;
         card.ondragstart = (e) => e.dataTransfer.setData('id', img.id);
         card.onclick = () => addToWorkspace(img, 20, 20);
-        card.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
+        card.innerHTML = `<img src="${img.url}" alt="${img.name}"><div>${img.name}</div>`;
         imageGrid.appendChild(card);
       });
     }
@@ -132,7 +132,7 @@
       div.style.position = 'absolute';
       div.style.left = x + 'px';
       div.style.top = y + 'px';
-      div.innerHTML = `<img src="${img.url}" alt="${img.name}"><div>${img.name}</div>`;
+      div.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
 
       let offsetX, offsetY, isDragging = false;
 
