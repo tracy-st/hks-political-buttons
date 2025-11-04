@@ -123,24 +123,69 @@ function applyFilters(){
   const colorName = document.getElementById('colorNameFilter').value || '';
   const searchHex = normalizeHex(document.getElementById('searchHex').value || '');
   // filter logic: if searchHex provided, match any color hex exact or very close
-  filtered = rows.filter(r=>{
+  // When filtering, compute a matchScore per row representing the proportion of the best-matching
+  // color for the active filter. We'll use this to sort results so the strongest matches appear first.
+  filtered = rows.map(r=>{
+    let matchScore = 0; // proportion (0..1)
+
+    // if searchHex provided -> prefer matches to that
+    if(searchHex){
+      let best = 0;
+      r.colors.forEach(c=>{
+        if(colorDistance(hexToRgb(c.hex), hexToRgb(searchHex)) <= 24){
+          if(c.proportion > best) best = c.proportion;
+        }
+      });
+      matchScore = best;
+    }
+
+    // else if color picker used -> matches within tolerance
+    else if(clr){
+      let best = 0;
+      r.colors.forEach(c=>{
+        if(colorDistance(hexToRgb(c.hex), hexToRgb(clr)) <= tol){
+          if(c.proportion > best) best = c.proportion;
+        }
+      });
+      matchScore = best;
+    }
+
+    // else if color name used -> match by name
+    else if(colorName){
+      let best = 0;
+      r.colors.forEach(c=>{
+        if(colorNameFromHex(c.hex) === colorName){
+          if(c.proportion > best) best = c.proportion;
+        }
+      });
+      matchScore = best;
+    }
+
+    return Object.assign({}, r, { matchScore });
+  }).filter(r=>{
+    // Now filter rows out if they don't meet selected filters (we still need to enforce presence)
     // color picker filter
     if(clr){
-      const found = r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(clr)) <= tol);
+      const found = r.colors && r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(clr)) <= tol);
       if(!found) return false;
     }
     // color name filter
     if(colorName){
-      const found = r.colors.some(c=> colorNameFromHex(c.hex) === colorName);
+      const found = r.colors && r.colors.some(c=> colorNameFromHex(c.hex) === colorName);
       if(!found) return false;
     }
-    // search hex (accept if any color within tolerance of 20)
+    // search hex
     if(searchHex){
-      const found = r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(searchHex)) <= 24);
+      const found = r.colors && r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(searchHex)) <= 24);
       if(!found) return false;
     }
     return true;
   });
+
+  // If any of the filters that imply a target color are active, sort by matchScore desc so strongest matches come first.
+  if(searchHex || clr || colorName){
+    filtered.sort((a,b)=> (b.matchScore || 0) - (a.matchScore || 0));
+  }
   page = 0;
   renderGrid();
 }
