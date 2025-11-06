@@ -39,6 +39,11 @@
       <div class="controls">
   <label>CSV: <input id="csvPath" type="text" value="../data/buttons_dedupe.csv" style="width:280px"></label>
         <label>Rows: <select id="rows"><option>4</option><option selected>6</option><option>8</option></select></label>
+        <label style="display:flex;align-items:center;gap:8px">Zoom:
+          <button id="zoomOut" title="Zoom out">−</button>
+          <input id="zoom" type="range" min="0.5" max="3" step="0.1" value="1" style="width:140px">
+          <button id="zoomIn" title="Zoom in">+</button>
+        </label>
         <button id="reload">Render</button>
       </div>
 
@@ -61,6 +66,20 @@
     const metaImg = document.getElementById('metaImg');
     const metaList = document.getElementById('metaList');
 
+  // zoom controls/state
+  const zoomInput = document.getElementById('zoom');
+  const zoomInBtn = document.getElementById('zoomIn');
+  const zoomOutBtn = document.getElementById('zoomOut');
+  let currentZoom = zoomInput ? parseFloat(zoomInput.value) : 1;
+  let seatGroup = null; // <g> containing seats (used for zoom transforms)
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function applyZoom(w,h){ if(!seatGroup) return; const z = currentZoom; const tx = (w - w*z)/2; const ty = (h - h*z)/2; seatGroup.setAttribute('transform', `translate(${tx} ${ty}) scale(${z})`); }
+  if(zoomInBtn) zoomInBtn.addEventListener('click', ()=>{ currentZoom = clamp(currentZoom + 0.1, 0.5, 3); if(zoomInput) zoomInput.value = currentZoom; applyZoom(svg.clientWidth || 1200, svg.clientHeight || 700); });
+  if(zoomOutBtn) zoomOutBtn.addEventListener('click', ()=>{ currentZoom = clamp(currentZoom - 0.1, 0.5, 3); if(zoomInput) zoomInput.value = currentZoom; applyZoom(svg.clientWidth || 1200, svg.clientHeight || 700); });
+  if(zoomInput) zoomInput.addEventListener('input', ()=>{ currentZoom = parseFloat(zoomInput.value); applyZoom(svg.clientWidth || 1200, svg.clientHeight || 700); });
+  // wheel-to-zoom
+  svg.addEventListener('wheel', (e)=>{ e.preventDefault(); const delta = e.deltaY>0 ? -0.1 : 0.1; currentZoom = clamp(currentZoom + delta, 0.5, 3); if(zoomInput) zoomInput.value = currentZoom; applyZoom(svg.clientWidth || 1200, svg.clientHeight || 700); });
+
     reloadBtn.addEventListener('click', ()=> loadAndRender(csvInput.value));
 
     // deterministic color for party name
@@ -79,12 +98,17 @@
       metaImg.src = '';
       metaList.innerHTML = '<dt>Loading CSV...</dt>';
       Papa.parse(path, { header:true, download:true, skipEmptyLines:true, complete: (res)=>{
-        const rows = res.data.filter(r=> r.image_url || r.url);
+        const rows = res.data.filter(r=> r.filename || r.image_url || r.url || r.image);
         if(rows.length===0){ metaList.innerHTML = '<dt>No rows found in CSV</dt>'; return; }
         // normalize fields
         const items = rows.map((r,i)=>({
           id: r.id || r.ID || String(i),
-          image_url: (r.image_url||r.url||r.image||'').replace(/^"|"$/g,''),
+          // prefer a local filename field when available and point to ../images/
+          image_url: (function(){
+            const fn = (r.filename || r.file || '').toString().replace(/^"|"$/g,'');
+            if(fn) return '../images/' + fn;
+            return (r.image_url||r.url||r.image||'').toString().replace(/^"|"$/g,'');
+          })(),
           party: (r.party || r.party_name || r.group || 'Other').toString().trim(),
           name: r.name || r.title || r.id || '',
           raw: r
@@ -117,18 +141,26 @@
     }
 
     function renderSeats(ordered, groups, rowsCount){
-      // use SVG rendering: patterns + circles
+      // use SVG rendering: images clipped to circles; place all seats inside a <g> so we can scale/translate for zoom
       while(svg.firstChild) svg.removeChild(svg.firstChild);
       const w = svg.clientWidth || 1200;
       const h = svg.clientHeight || 700;
       svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
       const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
       svg.appendChild(defs);
+      // group that will receive all seat elements so zooming can be applied via transform
+      seatGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+      seatGroup.setAttribute('id','seatGroup');
+      svg.appendChild(seatGroup);
 
-      const cx = w/2; const cy = h*0.92; // center near bottom
-      const seatSize = Math.max(48, Math.min(72, Math.floor(Math.min(w,h)/20)) ); // larger seats
-      const baseRadius = Math.min(w, h)*0.14;
-      const rowGap = Math.min(w,h)*0.095; // increased spacing so images are clearer
+  // add padding so thumbnails near the edges are fully visible
+  const pad = Math.max(24, Math.min(80, Math.floor(Math.min(w,h)/20)));
+  const cx = w/2; const cy = h*0.92 - pad; // center near bottom, shifted up by pad
+  // desired base seat size (will be clamped per-row to avoid overlaps)
+  const desiredSeat = Math.max(32, Math.min(64, Math.floor(Math.min(w,h)/20)) );
+  const minSeat = 16; // smallest allowed seat diameter to avoid disappearing
+  const baseRadius = Math.min(w, h)*0.14 - pad/4;
+  const rowGap = Math.min(w,h)*0.095; // increased spacing so images are clearer
 
       const total = ordered.length;
       const perRow = Math.ceil(total / rowsCount);
@@ -142,40 +174,59 @@
         for(let j=0;j<num;j++){
           const posInRow = j+1;
           const ang = Math.PI * (posInRow) / (num+1); // 0..PI
+          // chord length between adjacent seats at this radius
+          const delta = Math.PI / (num+1);
+          const chord = 2 * radius * Math.sin(delta/2);
+          // compute row-specific seat size so adjacent seats don't overlap
+          // leave a small margin (6px) between seats
+          const rowSeat = Math.max(minSeat, Math.min(desiredSeat, Math.floor(chord - 6)) );
           // position on semicircle (left to right)
           const x = cx + Math.cos(Math.PI - ang) * radius;
           const y = cy - Math.sin(ang) * radius;
           const item = ordered[idx++];
-          placeSeatSVG(item, x, y, seatSize, defs);
+          placeSeatSVG(item, x, y, rowSeat, defs);
         }
       }
+      // apply current zoom (centered)
+      applyZoom(w,h);
     }
 
     function placeSeatSVG(item, cx, cy, size, defs){
-      const id = 'pat-' + CSS.escape(String(item.id));
-      // create or reuse pattern
-      const pattern = document.createElementNS('http://www.w3.org/2000/svg','pattern');
-      pattern.setAttribute('id', id);
-      pattern.setAttribute('patternUnits','objectBoundingBox');
-      pattern.setAttribute('width','1'); pattern.setAttribute('height','1');
-      const img = document.createElementNS('http://www.w3.org/2000/svg','image');
-      img.setAttributeNS('http://www.w3.org/1999/xlink','href', item.image_url);
-      img.setAttribute('preserveAspectRatio','xMidYMid slice');
-      img.setAttribute('width', size); img.setAttribute('height', size);
-      pattern.appendChild(img);
-      defs.appendChild(pattern);
+      // Render the seat as a clipped image thumbnail (local image) with a circular border.
+      // Create a unique clipPath (userSpaceOnUse so coordinates match image placement)
+      const clipId = 'clip-' + CSS.escape(String(item.id));
+      const clip = document.createElementNS('http://www.w3.org/2000/svg','clipPath');
+      clip.setAttribute('id', clipId);
+      clip.setAttribute('clipPathUnits', 'userSpaceOnUse');
+      const clipCircle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      clipCircle.setAttribute('cx', cx);
+      clipCircle.setAttribute('cy', cy);
+      clipCircle.setAttribute('r', size/2 - 2);
+      clip.appendChild(clipCircle);
+      defs.appendChild(clip);
 
-      // circle using pattern fill
-      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
-      circle.setAttribute('cx', cx);
-      circle.setAttribute('cy', cy);
-      circle.setAttribute('r', size/2 - 2);
-      circle.setAttribute('fill', `url(#${id})`);
-      circle.setAttribute('stroke', colorForName(item.party));
-      circle.setAttribute('stroke-width', 3);
-      circle.style.cursor = 'pointer';
-      circle.addEventListener('click', ()=> showMeta(item));
-      svg.appendChild(circle);
+      // Image element placed at the seat position and clipped to the circle
+      const imgEl = document.createElementNS('http://www.w3.org/2000/svg','image');
+      imgEl.setAttributeNS('http://www.w3.org/1999/xlink','href', item.image_url);
+      imgEl.setAttribute('x', cx - size/2);
+      imgEl.setAttribute('y', cy - size/2);
+      imgEl.setAttribute('width', size);
+      imgEl.setAttribute('height', size);
+      imgEl.setAttribute('preserveAspectRatio','xMidYMid slice');
+      imgEl.setAttribute('clip-path', `url(#${clipId})`);
+      imgEl.style.cursor = 'pointer';
+  imgEl.addEventListener('click', ()=> showMeta(item));
+  if(seatGroup) seatGroup.appendChild(imgEl); else svg.appendChild(imgEl);
+
+      // Add a circular stroke (border) on top for party color
+      const border = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      border.setAttribute('cx', cx);
+      border.setAttribute('cy', cy);
+      border.setAttribute('r', size/2 - 2);
+      border.setAttribute('fill', 'none');
+      border.setAttribute('stroke', colorForName(item.party));
+      border.setAttribute('stroke-width', 3);
+      if(seatGroup) seatGroup.appendChild(border); else svg.appendChild(border);
     }
 
     function showMeta(item){
