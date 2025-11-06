@@ -1,6 +1,6 @@
 // app.js — loads data/colors_output.csv, renders grid, filters by color hex and color name
 
-const CSV_PATH = '../data/colors_output.csv';
+const CSV_PATH = '../data/colors_output_local.csv';
 let rows = [];
 let filtered = [];
 let page = 0;
@@ -15,14 +15,21 @@ function hookControls(){
   document.getElementById('tolerance').addEventListener('input', (e)=>{
     document.getElementById('tolValue').textContent = e.target.value;
   });
+  // single tolerance display (applies to both pickers)
+  const tol = document.getElementById('tolerance');
+  if(tol){
+    tol.addEventListener('input', (e)=>{ document.getElementById('tolValue').textContent = e.target.value; });
+  }
   document.getElementById('applyColorFilter').addEventListener('click', applyFilters);
   document.getElementById('applySearch').addEventListener('click', applyFilters);
   document.getElementById('clearFilters').addEventListener('click', ()=>{
     document.getElementById('colorPicker').value = '#ff0000';
+    document.getElementById('colorPicker2').value = '#0000ff';
     document.getElementById('colorNameFilter').value = '';
     document.getElementById('searchHex').value = '';
     document.getElementById('tolerance').value = 60;
     document.getElementById('tolValue').textContent = 60;
+    // single tolerance used for both pickers
     applyFilters();
   });
   document.getElementById('perPage').addEventListener('change',(e)=>{ perPage = parseInt(e.target.value); renderGrid(); });
@@ -33,6 +40,8 @@ function hookControls(){
   if(colorNameSel){
     colorNameSel.addEventListener('change', applyFilters);
   }
+  const colorPicker2 = document.getElementById('colorPicker2');
+  if(colorPicker2){ colorPicker2.addEventListener('input', ()=>{}); }
   document.getElementById('closeModal').addEventListener('click', closeModal);
 }
 
@@ -120,6 +129,7 @@ function renderGrid(){
 function applyFilters(){
   const clr = normalizeHex(document.getElementById('colorPicker').value || '');
   const tol = parseInt(document.getElementById('tolerance').value || 60);
+  const clr2 = normalizeHex((document.getElementById('colorPicker2') && document.getElementById('colorPicker2').value) || '');
   const colorName = document.getElementById('colorNameFilter').value || '';
   const searchHex = normalizeHex(document.getElementById('searchHex').value || '');
   // filter logic: if searchHex provided, match any color hex exact or very close
@@ -128,7 +138,7 @@ function applyFilters(){
   filtered = rows.map(r=>{
     let matchScore = 0; // proportion (0..1)
 
-    // if searchHex provided -> prefer matches to that
+    // compute matchScore depending on which filters are active
     if(searchHex){
       let best = 0;
       r.colors.forEach(c=>{
@@ -138,8 +148,17 @@ function applyFilters(){
       });
       matchScore = best;
     }
-
-    // else if color picker used -> matches within tolerance
+    // two color pickers -> require both and combine proportions
+    else if(clr && clr2){
+      let best1 = 0, best2 = 0;
+      r.colors.forEach(c=>{
+        if(colorDistance(hexToRgb(c.hex), hexToRgb(clr)) <= tol){ if(c.proportion > best1) best1 = c.proportion; }
+        if(colorDistance(hexToRgb(c.hex), hexToRgb(clr2)) <= tol){ if(c.proportion > best2) best2 = c.proportion; }
+      });
+      // combine both proportions as the match score (sum)
+      matchScore = best1 + best2;
+    }
+    // single color picker
     else if(clr){
       let best = 0;
       r.colors.forEach(c=>{
@@ -149,8 +168,7 @@ function applyFilters(){
       });
       matchScore = best;
     }
-
-    // else if color name used -> match by name
+    // color name used -> match by name (unchanged)
     else if(colorName){
       let best = 0;
       r.colors.forEach(c=>{
@@ -164,10 +182,16 @@ function applyFilters(){
     return Object.assign({}, r, { matchScore });
   }).filter(r=>{
     // Now filter rows out if they don't meet selected filters (we still need to enforce presence)
-    // color picker filter
-    if(clr){
+    // color picker filter (single)
+    if(clr && !clr2){
       const found = r.colors && r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(clr)) <= tol);
       if(!found) return false;
+    }
+    // both color pickers -> require both colors found (use same tol for both)
+    if(clr && clr2){
+      const found1 = r.colors && r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(clr)) <= tol);
+      const found2 = r.colors && r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(clr2)) <= tol);
+      if(!found1 || !found2) return false;
     }
     // color name filter
     if(colorName){

@@ -11,15 +11,16 @@
 <body>
   <header>
     <h1>Political Buttons — Color Browser</h1>
-    <p class="subtitle">Browse images and their top colors (data/colors_output.csv)</p>
+    <p class="subtitle">Browse images and their top colors (data/colors_output_local.csv)</p>
   </header>
 
   <main>
     <section class="controls">
       <div class="control-row">
-        <label>Color picker: <input id="colorPicker" type="color" value="#ff0000"></label>
-        <label>Tolerance: <input id="tolerance" type="range" min="0" max="255" value="60"></label>
-        <span id="tolValue">60</span>
+        <label>Color picker 1: <input id="colorPicker" type="color" value="#ff0000"></label>
+  <label>Tolerance: <input id="tolerance" type="range" min="0" max="255" value="60"></label>
+  <span id="tolValue">60</span>
+  <label>Color picker 2: <input id="colorPicker2" type="color" value="#0000ff"></label>
         <button id="applyColorFilter">Apply color filter</button>
         <button id="clearFilters">Clear</button>
       </div>
