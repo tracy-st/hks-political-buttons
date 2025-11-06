@@ -44,6 +44,7 @@
           <input id="zoom" type="range" min="0.5" max="3" step="0.1" value="1" style="width:140px">
           <button id="zoomIn" title="Zoom in">+</button>
         </label>
+        <label style="display:flex;align-items:center;gap:6px"><input id="toggleColor" type="checkbox" checked> <span>Show party color</span></label>
         <button id="reload">Render</button>
       </div>
 
@@ -70,6 +71,8 @@
   const zoomInput = document.getElementById('zoom');
   const zoomInBtn = document.getElementById('zoomIn');
   const zoomOutBtn = document.getElementById('zoomOut');
+  const toggleColor = document.getElementById('toggleColor');
+  let colorEnabled = toggleColor ? toggleColor.checked : true;
   let currentZoom = zoomInput ? parseFloat(zoomInput.value) : 1;
   let seatGroup = null; // <g> containing seats (used for zoom transforms)
   function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
@@ -79,6 +82,17 @@
   if(zoomInput) zoomInput.addEventListener('input', ()=>{ currentZoom = parseFloat(zoomInput.value); applyZoom(svg.clientWidth || 1200, svg.clientHeight || 700); });
   // wheel-to-zoom
   svg.addEventListener('wheel', (e)=>{ e.preventDefault(); const delta = e.deltaY>0 ? -0.1 : 0.1; currentZoom = clamp(currentZoom + delta, 0.5, 3); if(zoomInput) zoomInput.value = currentZoom; applyZoom(svg.clientWidth || 1200, svg.clientHeight || 700); });
+  if(toggleColor) toggleColor.addEventListener('change', ()=>{ colorEnabled = toggleColor.checked; updateBorders(); });
+
+  function updateBorders(){
+    // update stroke on existing borders (use stored data-party-color)
+    const selector = seatGroup ? seatGroup : svg;
+    const borders = selector.querySelectorAll('.seat-border');
+    borders.forEach(b=>{
+      const col = b.getAttribute('data-party-color') || '';
+      b.setAttribute('stroke', colorEnabled ? col : 'none');
+    });
+  }
 
     reloadBtn.addEventListener('click', ()=> loadAndRender(csvInput.value));
 
@@ -87,6 +101,18 @@
       let h = 0;
       for(let i=0;i<name.length;i++) h = (h*31 + name.charCodeAt(i))%360;
       return `hsl(${h} 70% 55%)`;
+    }
+
+    // deterministic pseudo-random in [-1,1] based on a string seed
+    function seededRandom01(str, salt){
+      let h = 2166136261 >>> 0;
+      const s = (str || '') + '|' + (salt||'0');
+      for(let i=0;i<s.length;i++){
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619) >>> 0;
+      }
+      // map to [0,1]
+      return (h >>> 0) / 4294967295;
     }
 
     function normalizeHex(h){ if(!h) return ''; h=h.trim(); if(h[0] !== '#') h='#'+h; if(h.length===4) h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return h.toLowerCase(); }
@@ -160,7 +186,8 @@
   const desiredSeat = Math.max(32, Math.min(64, Math.floor(Math.min(w,h)/20)) );
   const minSeat = 16; // smallest allowed seat diameter to avoid disappearing
   const baseRadius = Math.min(w, h)*0.14 - pad/4;
-  const rowGap = Math.min(w,h)*0.095; // increased spacing so images are clearer
+  // tighten rows slightly for denser packing
+  const rowGap = Math.min(w,h)*0.08;
 
       const total = ordered.length;
       const perRow = Math.ceil(total / rowsCount);
@@ -173,17 +200,31 @@
         const radius = baseRadius + r*rowGap;
         for(let j=0;j<num;j++){
           const posInRow = j+1;
+          // base angle for this seat
           const ang = Math.PI * (posInRow) / (num+1); // 0..PI
           // chord length between adjacent seats at this radius
           const delta = Math.PI / (num+1);
           const chord = 2 * radius * Math.sin(delta/2);
           // compute row-specific seat size so adjacent seats don't overlap
-          // leave a small margin (6px) between seats
-          const rowSeat = Math.max(minSeat, Math.min(desiredSeat, Math.floor(chord - 6)) );
-          // position on semicircle (left to right)
-          const x = cx + Math.cos(Math.PI - ang) * radius;
-          const y = cy - Math.sin(ang) * radius;
+          // leave a smaller margin (4px) between seats to allow denser packing
+          const rowSeat = Math.max(minSeat, Math.min(desiredSeat, Math.floor(chord - 4)) );
+
+          // deterministic jitter per seat (based on id) to reduce visual overlap
           const item = ordered[idx++];
+          const r1 = seededRandom01(String(item.id), 'a')*2 - 1; // in [-1,1]
+          const r2 = seededRandom01(String(item.id), 'b')*2 - 1;
+          const jitterAmp = Math.min(8, Math.max(2, rowSeat * 0.18));
+          // apply small angular and radial jitter
+          const angJitter = (r1 * 0.35) * (delta); // up to ~35% of half-angle step
+          const radJitter = r2 * (rowGap * 0.35); // up to ~35% of rowGap
+
+          const finalAng = ang + angJitter;
+          const finalRad = radius + radJitter;
+
+          // position on semicircle (left to right) with jitter
+          const x = cx + Math.cos(Math.PI - finalAng) * finalRad;
+          const y = cy - Math.sin(finalAng) * finalRad;
+
           placeSeatSVG(item, x, y, rowSeat, defs);
         }
       }
@@ -224,7 +265,10 @@
       border.setAttribute('cy', cy);
       border.setAttribute('r', size/2 - 2);
       border.setAttribute('fill', 'none');
-      border.setAttribute('stroke', colorForName(item.party));
+  const partyColor = colorForName(item.party);
+  border.setAttribute('data-party-color', partyColor);
+  border.classList.add('seat-border');
+  border.setAttribute('stroke', colorEnabled ? partyColor : 'none');
       border.setAttribute('stroke-width', 3);
       if(seatGroup) seatGroup.appendChild(border); else svg.appendChild(border);
     }
