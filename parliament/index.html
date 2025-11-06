@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Parliament Layout — Thumbnails by Party</title>
+  <style>
+    :root{--sidebar-width:280px}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial;background:#fafbfd;color:#111}
+    .app{display:flex;min-height:100vh}
+    .sidebar{width:var(--sidebar-width);border-right:1px solid #e6e9ee;padding:16px;box-sizing:border-box;background:#fff}
+    .sidebar h2{margin:4px 0 10px;font-size:16px}
+    .meta-img{width:100%;height:auto;border-radius:6px;border:1px solid #ddd}
+    .meta-list{margin-top:12px;font-size:14px}
+    .meta-list dt{font-weight:600;margin-top:8px}
+    .main{flex:1;padding:12px;box-sizing:border-box;position:relative}
+    .controls{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .canvas-wrap{background:linear-gradient(180deg,#fff,#f5f7fb);border-radius:8px;height:calc(100vh - 110px);position:relative;overflow:hidden}
+    .seat{position:absolute;width:46px;height:46px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,0.6);box-shadow:0 1px 3px rgba(0,0,0,0.12);cursor:pointer;background:#ddd;display:flex;align-items:center;justify-content:center}
+    .seat img{width:100%;height:100%;object-fit:cover;display:block}
+    .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .legend-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;background:#fff;border:1px solid #eee;font-size:13px}
+    .color-dot{width:14px;height:14px;border-radius:50%}
+    .hint{color:#666;font-size:13px;margin-top:8px}
+    .controls select, .controls button{padding:6px 8px;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h2>Seat info</h2>
+      <img id="metaImg" class="meta-img" src="" alt="preview">
+      <dl id="metaList" class="meta-list"><dt>Click a seat to see metadata</dt></dl>
+      <div class="hint">Data source: <code>data/color_names.csv</code> (expects columns: image_url,id,party,name,...)</div>
+      <div class="legend" id="legend"></div>
+    </aside>
+
+    <main class="main">
+      <div class="controls">
+  <label>CSV: <input id="csvPath" type="text" value="../data/buttons_dedupe.csv" style="width:280px"></label>
+        <label>Rows: <select id="rows"><option>4</option><option selected>6</option><option>8</option></select></label>
+        <button id="reload">Render</button>
+      </div>
+
+      <div class="canvas-wrap">
+        <svg id="svgCanvas" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    // Parliament-like semicircle layout. Loads a CSV of items with a 'party' field.
+    // Each seat is rendered as a circular thumbnail. Clicking a seat shows metadata in the left sidebar.
+
+  const svg = document.getElementById('svgCanvas');
+    const csvInput = document.getElementById('csvPath');
+    const rowsSelect = document.getElementById('rows');
+    const reloadBtn = document.getElementById('reload');
+    const legendEl = document.getElementById('legend');
+    const metaImg = document.getElementById('metaImg');
+    const metaList = document.getElementById('metaList');
+
+    reloadBtn.addEventListener('click', ()=> loadAndRender(csvInput.value));
+
+    // deterministic color for party name
+    function colorForName(name){
+      let h = 0;
+      for(let i=0;i<name.length;i++) h = (h*31 + name.charCodeAt(i))%360;
+      return `hsl(${h} 70% 55%)`;
+    }
+
+    function normalizeHex(h){ if(!h) return ''; h=h.trim(); if(h[0] !== '#') h='#'+h; if(h.length===4) h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return h.toLowerCase(); }
+    function hexToRgb(hex){ if(!hex) return null; hex = hex.replace('#',''); if(hex.length===3) hex = hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); if(isNaN(n)) return null; return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
+
+    function loadAndRender(path){
+      // clear svg
+      while(svg.firstChild) svg.removeChild(svg.firstChild);
+      metaImg.src = '';
+      metaList.innerHTML = '<dt>Loading CSV...</dt>';
+      Papa.parse(path, { header:true, download:true, skipEmptyLines:true, complete: (res)=>{
+        const rows = res.data.filter(r=> r.image_url || r.url);
+        if(rows.length===0){ metaList.innerHTML = '<dt>No rows found in CSV</dt>'; return; }
+        // normalize fields
+        const items = rows.map((r,i)=>({
+          id: r.id || r.ID || String(i),
+          image_url: (r.image_url||r.url||r.image||'').replace(/^"|"$/g,''),
+          party: (r.party || r.party_name || r.group || 'Other').toString().trim(),
+          name: r.name || r.title || r.id || '',
+          raw: r
+        }));
+
+        // group by party and sort parties by size (largest first)
+        const groups = {};
+        items.forEach(it=>{ groups[it.party] = groups[it.party]||[]; groups[it.party].push(it); });
+        const partyNames = Object.keys(groups).sort((a,b)=> groups[b].length - groups[a].length);
+
+        // build ordered seat list by concatenating party groups (keeps party blocks contiguous)
+        const ordered = [];
+        partyNames.forEach(p=> ordered.push(...groups[p]));
+
+        renderLegend(partyNames, groups);
+        renderSeats(ordered, groups, parseInt(rowsSelect.value,10) || 6);
+
+        metaList.innerHTML = '<dt>Loaded rows</dt><dd>'+items.length+' seats across '+partyNames.length+' parties</dd>';
+      }, error:(err)=>{ metaList.innerHTML = '<dt>CSV load error</dt><dd>'+err+'</dd>'; }});
+    }
+
+    function renderLegend(names, groups){
+      legendEl.innerHTML = '';
+      names.forEach(n=>{
+        const el = document.createElement('div'); el.className='legend-item';
+        const dot = document.createElement('span'); dot.className='color-dot'; dot.style.background = colorForName(n);
+        const txt = document.createElement('div'); txt.textContent = `${n} (${groups[n].length})`;
+        el.appendChild(dot); el.appendChild(txt); legendEl.appendChild(el);
+      });
+    }
+
+    function renderSeats(ordered, groups, rowsCount){
+      // use SVG rendering: patterns + circles
+      while(svg.firstChild) svg.removeChild(svg.firstChild);
+      const w = svg.clientWidth || 1200;
+      const h = svg.clientHeight || 700;
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+      svg.appendChild(defs);
+
+      const cx = w/2; const cy = h*0.92; // center near bottom
+      const seatSize = Math.max(48, Math.min(72, Math.floor(Math.min(w,h)/20)) ); // larger seats
+      const baseRadius = Math.min(w, h)*0.14;
+      const rowGap = Math.min(w,h)*0.095; // increased spacing so images are clearer
+
+      const total = ordered.length;
+      const perRow = Math.ceil(total / rowsCount);
+      let idx = 0;
+
+      for(let r=0;r<rowsCount;r++){
+        const remaining = Math.max(0, total - idx);
+        const num = Math.min(perRow, remaining);
+        if(num<=0) break;
+        const radius = baseRadius + r*rowGap;
+        for(let j=0;j<num;j++){
+          const posInRow = j+1;
+          const ang = Math.PI * (posInRow) / (num+1); // 0..PI
+          // position on semicircle (left to right)
+          const x = cx + Math.cos(Math.PI - ang) * radius;
+          const y = cy - Math.sin(ang) * radius;
+          const item = ordered[idx++];
+          placeSeatSVG(item, x, y, seatSize, defs);
+        }
+      }
+    }
+
+    function placeSeatSVG(item, cx, cy, size, defs){
+      const id = 'pat-' + CSS.escape(String(item.id));
+      // create or reuse pattern
+      const pattern = document.createElementNS('http://www.w3.org/2000/svg','pattern');
+      pattern.setAttribute('id', id);
+      pattern.setAttribute('patternUnits','objectBoundingBox');
+      pattern.setAttribute('width','1'); pattern.setAttribute('height','1');
+      const img = document.createElementNS('http://www.w3.org/2000/svg','image');
+      img.setAttributeNS('http://www.w3.org/1999/xlink','href', item.image_url);
+      img.setAttribute('preserveAspectRatio','xMidYMid slice');
+      img.setAttribute('width', size); img.setAttribute('height', size);
+      pattern.appendChild(img);
+      defs.appendChild(pattern);
+
+      // circle using pattern fill
+      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circle.setAttribute('cx', cx);
+      circle.setAttribute('cy', cy);
+      circle.setAttribute('r', size/2 - 2);
+      circle.setAttribute('fill', `url(#${id})`);
+      circle.setAttribute('stroke', colorForName(item.party));
+      circle.setAttribute('stroke-width', 3);
+      circle.style.cursor = 'pointer';
+      circle.addEventListener('click', ()=> showMeta(item));
+      svg.appendChild(circle);
+    }
+
+    function showMeta(item){
+      metaImg.src = item.image_url;
+      metaList.innerHTML = '';
+      const r = item.raw || {};
+      for(const k of Object.keys(r)){
+        const dt = document.createElement('dt'); dt.textContent = k; dt.style.fontWeight='600';
+        const dd = document.createElement('dd'); dd.textContent = r[k]; dd.style.margin='0 0 6px 0';
+        metaList.appendChild(dt); metaList.appendChild(dd);
+      }
+    }
+
+    // initial render
+    loadAndRender(csvInput.value);
+    // reflow on resize
+    window.addEventListener('resize', ()=> loadAndRender(csvInput.value));
+  </script>
+</body>
+</html>
