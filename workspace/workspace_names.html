@@ -14,11 +14,6 @@
     h2 {
       margin-bottom: 10px;
     }
-    .container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
     .filters button {
       margin-right: 5px;
       padding: 5px 10px;
@@ -51,11 +46,14 @@
     }
     .workspace {
       border: 2px dashed #999;
-      min-height: 800px;
       padding: 10px;
       background: #31302e;
       position: relative;
       overflow: hidden;
+      font-size: 30em;
+      color: white;
+      font-weight:bold;
+      height:400px
     }
     .workspace-card {
       text-align: center;
@@ -71,18 +69,27 @@
       user-select: none;
       pointer-events: none;
     }
+
+    #workspaceContainer {
+    position: sticky;
+    top: 0; /* Sticks to the top of the viewport when scrolled to this position */
+    padding: 10px;
+    z-index: 100; /* Ensures it appears above other content */
+}
+
+
   </style>
 </head>
 <body>
   <div class="container">
+    <div id="workspaceContainer">
+      <h2>Workspace</h2>
+      <div class="workspace" id="workspace"></div>
+    </div>
     <div>
       <h2>Filter by Color</h2>
       <div class="filters" id="filters"></div>
       <div class="image-grid" id="imageGrid"></div>
-    </div>
-    <div>
-      <h2>Workspace</h2>
-      <div class="workspace" id="workspace"></div>
     </div>
   </div>
 
@@ -94,23 +101,48 @@
     let data = [];
     let filter = 'all';
 
+    // helper to normalize names
+    function normName(s){ return (s||'').toString().toLowerCase().trim(); }
+
     async function loadCSV() {
       const response = await fetch('../data/color_names.csv');
       const csvText = await response.text();
       const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-      data = parsed.data.map((row, index) => ({
-        id: row.id || index.toString(),
-        name: row.name || row.image_name || `Image ${index + 1}`,
-        width: row.w_cm || '3',
-        color: row.color || 'unknown',
-        url: row.url || row.image_url || ''
-      })).filter(item => item.url);
+      // parsed.data contains one row per color for an image. Group by image_url
+      const byImage = {};
+      parsed.data.forEach(r => {
+        const img = (r.image_url || r.url || '').toString().replace(/^"|"$/g,'');
+        if(!img) return;
+        if(!byImage[img]) byImage[img] = { image_url: img, id: r.id || '', w_cm: r.w_cm || '', raw: [] };
+        byImage[img].raw.push(r);
+      });
+      data = Object.keys(byImage).map((imgUrl, idx) => {
+        const group = byImage[imgUrl];
+        // sort by idx field if present to keep top colors first
+        group.raw.sort((a,b)=> (parseInt(a.idx)||0) - (parseInt(b.idx)||0));
+        const colors = group.raw.map(rr=>({
+          hex: (rr.color||'').toString(),
+          proportion: parseFloat(rr.proportion) || 0,
+          color_name: normName(rr.color_name || rr.name || '')
+        })).filter(c=>c.hex);
+        return {
+          id: group.id || `img-${idx}`,
+          name: `Image ${idx+1}`,
+          width: parseFloat(group.w_cm) || 3,
+          url: group.image_url,
+          colors,
+          raw: group.raw
+        };
+      });
       renderFilters();
       renderImages();
     }
 
     function renderFilters() {
-      const colors = ['all', ...new Set(data.map(d => d.color))];
+      // gather unique color_name values from colors arrays
+      const names = new Set();
+      data.forEach(d=> d.colors.forEach(c=> { if(c.color_name) names.add(c.color_name); }));
+      const colors = ['all', ...Array.from(names).sort()];
       filtersDiv.innerHTML = '';
       colors.forEach(c => {
         const btn = document.createElement('button');
@@ -126,7 +158,7 @@
     }
 
     function renderImages() {
-      const images = filter === 'all' ? data : data.filter(i => i.color === filter);
+      const images = filter === 'all' ? data : data.filter(i => i.colors.some(c=> c.color_name === filter));
       imageGrid.innerHTML = '';
       images.forEach(img => {
         const card = document.createElement('div');
@@ -134,7 +166,9 @@
         card.draggable = true;
         card.ondragstart = (e) => e.dataTransfer.setData('id', img.id);
         card.onclick = () => addToWorkspace(img, 20, 20);
-        card.innerHTML = `<img src="${img.url}" alt="${img.name}" width="${img.width * 10}"><div>${img.name}</div>`;
+        // show a small swatch row for the top colors
+        const swatches = img.colors.slice(0,5).map(c=> `<span title="${c.color_name}" style="display:inline-block;width:14px;height:14px;background:${c.hex};margin-right:4px;border:1px solid #fff"></span>`).join('');
+        card.innerHTML = `<img src="${img.url}" alt="${img.name}"><div>${swatches}<div style="margin-top:6px">${img.name}</div></div>`;
         imageGrid.appendChild(card);
       });
     }
@@ -147,7 +181,7 @@
       div.style.position = 'absolute';
       div.style.left = x + 'px';
       div.style.top = y + 'px';
-      div.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
+      div.innerHTML = `<img src="${img.url}" alt="${img.name}" style="width:${img.width * 10}px">`;
 
       let offsetX, offsetY, isDragging = false;
 

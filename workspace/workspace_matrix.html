@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Color Matrix — Hue × Brightness</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:16px;background:#fff;color:#111}
+    h1{margin:0 0 12px;font-size:20px}
+    .controls{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+    .matrix-wrap{overflow:auto;border:1px solid #e6e6e6;padding:8px;background:#fafafa}
+    .matrix{display:grid;gap:6px}
+    .cell{max-width:500px;background:#fff;border:1px solid #eee;border-radius:4px;display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:center;overflow:auto;padding:4px}
+    .cell .thumb{width:36px;height:28px;object-fit:cover;border-radius:3px;margin:2px;border:1px solid #ddd;cursor:pointer}
+    .axis-labels{display:flex;align-items:center;gap:8px;margin-top:8px}
+    .hue-labels{display:flex;gap:6px;overflow:auto}
+    .hue-label{width:80px;text-align:center;font-size:11px;color:#555}
+    .y-axis{float:left;margin-right:8px}
+    .meta{margin-top:8px;color:#333}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:999}
+    .modal .content{background:#fff;padding:12px;border-radius:6px;max-width:90%;max-height:90%;overflow:auto}
+    .close{background:#333;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <h1>Color Matrix — Hue × Brightness</h1>
+  <div class="controls">
+    <label>Hue bins: <select id="hueBins"><option>12</option><option selected>24</option><option>36</option><option>48</option></select></label>
+    <label>Brightness bins: <select id="brightBins"><option>6</option><option selected>10</option><option>15</option></select></label>
+    <button id="reload">Reload CSV</button>
+    <label><input id="showCounts" type="checkbox" checked> Show counts</label>
+  </div>
+
+  <div class="matrix-wrap">
+    <div id="matrix" class="matrix" role="grid"></div>
+  </div>
+  <div class="axis-labels">
+    <div style="width:60px;text-align:right;color:#666;font-size:12px">Brightness ▲</div>
+    <div style="flex:1">
+      <div id="hueLabels" class="hue-labels"></div>
+    </div>
+  </div>
+
+  <div class="meta" id="meta">Loading…</div>
+
+  <div id="modal" class="modal"><div class="content"><button id="closeModal" class="close">Close</button><div id="modalBody"></div></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    const CSV = '../data/color_names.csv';
+    const matrixEl = document.getElementById('matrix');
+    const metaEl = document.getElementById('meta');
+    const hueBinsEl = document.getElementById('hueBins');
+    const brightBinsEl = document.getElementById('brightBins');
+    const reloadBtn = document.getElementById('reload');
+    const showCountsEl = document.getElementById('showCounts');
+
+    reloadBtn.addEventListener('click', build);
+    hueBinsEl.addEventListener('change', build);
+    brightBinsEl.addEventListener('change', build);
+    showCountsEl.addEventListener('change', ()=> renderMatrix(window.grid || []));
+    document.getElementById('closeModal').addEventListener('click', ()=> document.getElementById('modal').style.display='none');
+
+    function normalizeHex(h){ if(!h) return ''; h=h.toString().trim(); if(h[0] !== '#') h='#'+h; if(h.length===4) h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return h.toLowerCase(); }
+    function hexToRgb(hex){ if(!hex) return null; hex = hex.replace('#',''); if(hex.length===3) hex = hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); if(isNaN(n)) return null; return {r:(n>>16)&255, g:(n>>8)&255, b:n&255}; }
+    function rgbToHsl(r,g,b){ r/=255;g/=255;b/=255; const max=Math.max(r,g,b), min=Math.min(r,g,b); let h=0,s=0,l=(max+min)/2; if(max!==min){ const d=max-min; s = l>0.5? d/(2-max-min) : d/(max+min); switch(max){ case r: h=(g-b)/d + (g<b?6:0); break; case g: h=(b-r)/d + 2; break; case b: h=(r-g)/d + 4; break; } h/=6; } return {h: h*360, s, l}; }
+    function colorDistance(a,b){ if(!a||!b) return Infinity; const dr=a.r-b.r, dg=a.g-b.g, db=a.b-b.b; return Math.sqrt(dr*dr+dg*dg+db*db); }
+
+    function groupImages(rows){
+      const by = {};
+      rows.forEach(r=>{
+        const img = (r.image_url || r.url || '').toString().replace(/^"|"$/g,'');
+        if(!img) return;
+        if(!by[img]) by[img] = { image_url: img, id: r.id || img, w_cm: r.w_cm || '', colors: [] };
+        by[img].colors.push({ hex: normalizeHex(r.color||''), proportion: parseFloat(r.proportion)||0, color_name: (r.color_name||'').toString().toLowerCase().trim() });
+      });
+      return Object.keys(by).map(k=>{
+        const g = by[k];
+        g.colors.sort((a,b)=> b.proportion - a.proportion);
+        g.topColor = g.colors[0] || {hex:'',proportion:0,color_name:''};
+        return g;
+      });
+    }
+
+    function pickColorForBinning(img){
+      // fallback from top color to second if top matches common background
+      let use = img.topColor || {hex:''};
+      const bgHex = '#2e2a29';
+      const bgRgb = hexToRgb(bgHex);
+      const topRgb = hexToRgb(normalizeHex(use.hex||''));
+      if(topRgb && colorDistance(topRgb, bgRgb) <= 28 && img.colors && img.colors.length>1){
+        use = img.colors[1];
+      }
+      return use;
+    }
+
+    function build(){
+      metaEl.textContent = 'Loading CSV and building matrix…';
+      Papa.parse(CSV, { header:true, download:true, skipEmptyLines:true, complete: (res)=>{
+        const imgs = groupImages(res.data);
+        // compute hue and lightness for each image
+        imgs.forEach(img=>{
+          const c = pickColorForBinning(img);
+          const rgb = hexToRgb(normalizeHex(c.hex||''));
+          if(!rgb){ img.h = null; img.l = null; }
+          else {
+            const hsl = rgbToHsl(rgb.r,rgb.g,rgb.b);
+            img.h = (isFinite(hsl.h)? Math.round(hsl.h) : null);
+            img.l = (typeof hsl.l === 'number')? hsl.l : null; // 0..1
+          }
+          img.usedColor = c; // store which color used
+        });
+
+        const hueBins = parseInt(hueBinsEl.value,10) || 24;
+        const brightBins = parseInt(brightBinsEl.value,10) || 10;
+
+        // initialize grid [row (brightness) x col (hue)] rows: brightBins, cols: hueBins
+        const grid = Array.from({length: brightBins}, ()=> Array.from({length: hueBins}, ()=> []));
+
+        imgs.forEach(img=>{
+          if(img.h === null || img.l === null){
+            // place in middle brightness row if missing
+            const row = Math.floor((brightBins-1)/2);
+            const col = 0; // put in first column as fallback
+            grid[row][col].push(img);
+          } else {
+            const col = Math.floor(img.h / (360 / hueBins)) % hueBins;
+            // brightness l in [0,1], map to row index with 0 at top (bright) so invert
+            let row = brightBins - 1 - Math.floor(img.l * brightBins);
+            if(row < 0) row = 0; if(row >= brightBins) row = brightBins-1;
+            grid[row][col].push(img);
+          }
+        });
+
+        window.grid = grid; window.hueBins = hueBins; window.brightBins = brightBins;
+        renderMatrix(grid);
+        metaEl.textContent = `Images: ${imgs.length} — Hue bins: ${hueBins}, Brightness bins: ${brightBins}`;
+      }, error: (err)=>{ metaEl.textContent = 'CSV load error: '+err; }});
+    }
+
+    function renderMatrix(grid){
+      const hueBins = window.hueBins || parseInt(hueBinsEl.value,10) || 24;
+      const brightBins = window.brightBins || parseInt(brightBinsEl.value,10) || 10;
+      matrixEl.innerHTML = '';
+      // set grid columns
+      matrixEl.style.gridTemplateColumns = `repeat(${hueBins}, auto)`;
+      // create cells row by row (top row = bright)
+      for(let r=0;r<brightBins;r++){
+        for(let c=0;c<hueBins;c++){
+          const cell = document.createElement('div'); cell.className='cell';
+          const items = (grid[r] && grid[r][c]) || [];
+          items.forEach(it=>{
+            const img = document.createElement('img'); img.className='thumb'; img.src = it.image_url; img.title = `${it.usedColor.color_name || ''} ${it.usedColor.hex || ''}`;
+            img.addEventListener('click', ()=> openModal(it));
+            cell.appendChild(img);
+          });
+          if(showCountsEl.checked){ const cnt = document.createElement('div'); cnt.style.fontSize='11px'; cnt.style.color='#333'; cnt.style.marginTop='4px'; cnt.textContent = items.length; cell.appendChild(cnt); }
+          matrixEl.appendChild(cell);
+        }
+      }
+
+      // update hue labels under the grid
+      const hueLabels = document.getElementById('hueLabels'); hueLabels.innerHTML = '';
+      for(let c=0;c<hueBins;c++){
+        const degStart = Math.round(c*(360/hueBins));
+        const degEnd = Math.round((c+1)*(360/hueBins));
+        const lbl = document.createElement('div'); lbl.className='hue-label'; lbl.textContent = `${degStart}–${degEnd}°`;
+        hueLabels.appendChild(lbl);
+      }
+    }
+
+    function openModal(item){
+      const body = document.getElementById('modalBody'); body.innerHTML='';
+      const img = document.createElement('img'); img.src = item.image_url; body.appendChild(img);
+      const p = document.createElement('div'); p.style.marginTop='8px'; p.textContent = `Used color: ${item.usedColor.color_name || ''} ${item.usedColor.hex || ''} — ${Math.round((item.usedColor.proportion||0)*100)}%`;
+      body.appendChild(p);
+      document.getElementById('modal').style.display='flex';
+    }
+
+    build();
+  </script>
+</body>
+</html>
