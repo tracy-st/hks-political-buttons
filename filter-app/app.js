@@ -22,6 +22,8 @@ function hookControls(){
   }
   document.getElementById('applyColorFilter').addEventListener('click', applyFilters);
   document.getElementById('applySearch').addEventListener('click', applyFilters);
+  document.getElementById('applyNameFilter').addEventListener('click', applyFilters);
+  document.getElementById('toggleSecondColor').addEventListener('click', toggleSecondColor);
   document.getElementById('clearFilters').addEventListener('click', ()=>{
     document.getElementById('colorPicker').value = '#ff0000';
     document.getElementById('colorPicker2').value = '#0000ff';
@@ -29,20 +31,31 @@ function hookControls(){
     document.getElementById('searchHex').value = '';
     document.getElementById('tolerance').value = 60;
     document.getElementById('tolValue').textContent = 60;
-    // single tolerance used for both pickers
+    // hide second color if shown
+    document.getElementById('colorPicker2').style.display = 'none';
+    document.getElementById('toggleSecondColor').textContent = 'Add Second Color';
     applyFilters();
   });
   document.getElementById('perPage').addEventListener('change',(e)=>{ perPage = parseInt(e.target.value); renderGrid(); });
   document.getElementById('prevPage').addEventListener('click', ()=>{ if(page>0) {page--; renderGrid()} });
   document.getElementById('nextPage').addEventListener('click', ()=>{ if((page+1)*perPage < filtered.length) {page++; renderGrid()} });
   // apply filters when the color-name dropdown changes
-  const colorNameSel = document.getElementById('colorNameFilter');
-  if(colorNameSel){
-    colorNameSel.addEventListener('change', applyFilters);
-  }
+  // removed automatic apply, now uses button
   const colorPicker2 = document.getElementById('colorPicker2');
   if(colorPicker2){ colorPicker2.addEventListener('input', ()=>{}); }
   document.getElementById('closeModal').addEventListener('click', closeModal);
+}
+
+function toggleSecondColor(){
+  const picker2 = document.getElementById('colorPicker2');
+  const btn = document.getElementById('toggleSecondColor');
+  if(picker2.style.display === 'none'){
+    picker2.style.display = 'inline';
+    btn.textContent = 'Remove Second Color';
+  } else {
+    picker2.style.display = 'none';
+    btn.textContent = 'Add Second Color';
+  }
 }
 
 function loadCSV(){
