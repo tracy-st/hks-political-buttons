@@ -30,6 +30,20 @@
       display: flex;
       justify-content: space-between;
     }
+    .top-bar.collapsed div:first-child,
+    .top-bar.collapsed .list-button {
+      display: none;
+    }
+    .top-bar.collapsed {
+      padding: 10px 10px 10px 0;
+      justify-content: flex-end;
+      background: transparent;
+    }
+    .right-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
     .search-bar {
       width: 400px;
       padding: 5px;
@@ -39,6 +53,15 @@
 
     .filters {
       margin-left: 20px
+    }
+
+    .right-controls button {
+      margin-left: auto;
+      padding: 10px;
+      border: 1px solid #000;
+      background: #ccc;
+      cursor: pointer;
+      margin: 5px
     }
     
     .filters button {
@@ -52,14 +75,7 @@
       background: #666;
       color: #fff;
     }
-    .list-button {
-      margin-left: auto;
-      padding: 10px;
-      border: none;
-      background: #ccc;
-      cursor: pointer;
-      height: 50px
-    }
+
     .image-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -82,7 +98,7 @@
     }
     .workspace {
       border: 2px dashed #999;
-      padding: 10px;
+      width:100;
       background: #31302e;
       position: relative;
       overflow: hidden;
@@ -108,8 +124,8 @@
 
     #workspaceContainer {
     position: sticky;
-    top: 0; /* Sticks to the top of the viewport when scrolled to this position */
-    padding: 10px;
+    top: 0; /* Sticks to the top of the viewport when scrolled to this position 
+    padding: 10px;*/
     z-index: 100; /* Ensures it appears above other content */
 }
 
@@ -129,7 +145,10 @@
       <input id="search" placeholder="Search titles..." class="search-bar">
     </div>
     </div>
+    <div class="right-controls">
         <button id="viewList" class="list-button">View Workspace as List</button>
+        <button id="toggleTopBar">Collapse</button>
+    </div>
   </div>
     <div id="workspaceContainer">
       <h2>Workspace</h2>
@@ -145,7 +164,7 @@
     <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
     <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
       <h3>Workspace Items</h3>
-      <table id="workspaceTable" border="1" style="width:100%;">
+      <table id="workspaceTable" style="width:100%;">
         <thead><tr><th>Thumbnail</th><th>Title</th><th>ID</th></tr></thead>
         <tbody></tbody>
       </table>
@@ -169,6 +188,7 @@
     const modal = document.getElementById('modal');
     const closeModalBtn = document.getElementById('closeModal');
     const downloadCSVBtn = document.getElementById('downloadCSV');
+    const toggleTopBarBtn = document.getElementById('toggleTopBar');
 
     searchInput.addEventListener('input', (e) => {
       searchTerm = e.target.value.toLowerCase();
@@ -182,6 +202,12 @@
 
     closeModalBtn.addEventListener('click', () => {
       modal.style.display = 'none';
+    });
+
+    toggleTopBarBtn.addEventListener('click', () => {
+      const topBar = document.querySelector('.top-bar');
+      topBar.classList.toggle('collapsed');
+      toggleTopBarBtn.textContent = topBar.classList.contains('collapsed') ? 'Expand' : 'Collapse';
     });
 
     downloadCSVBtn.addEventListener('click', () => {
@@ -297,7 +323,7 @@
       div.style.position = 'absolute';
       div.style.left = x + 'px';
       div.style.top = y + 'px';
-      div.innerHTML = `<img src="${img.url}" alt="${img.name}" style="width:${img.width * 10}px">`;
+      div.innerHTML = `<img src="${img.url}" alt="${img.name}" style="width:${img.width * 5}px">`;
 
       let offsetX, offsetY, isDragging = false;
 
