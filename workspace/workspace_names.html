@@ -20,8 +20,18 @@
       justify-content: flex-start;
       align-items: center
     }
+
+    .sticky {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      padding: 10px;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+    }
     .search-bar {
-      width: 500px;
+      width: 400px;
       padding: 5px;
       margin: 0 0 10px 20px;
      display: inline-block
@@ -41,6 +51,14 @@
     .filters button.active {
       background: #666;
       color: #fff;
+    }
+    .list-button {
+      margin-left: auto;
+      padding: 10px;
+      border: none;
+      background: #ccc;
+      cursor: pointer;
+      height: 50px
     }
     .image-grid {
       display: grid;
@@ -100,11 +118,9 @@
 </head>
 <body>
   <div class="container">
-    <div id="workspaceContainer">
-      <h2>Workspace</h2>
-      <div class="workspace" id="workspace"></div>
-    </div>
-    <div class="options">
+  <div class="top-bar sticky">
+    <div>
+     <div class="options">
       <h2>Filter by Color</h2>
       <div class="filters" id="filters"></div>
     </div>
@@ -112,25 +128,89 @@
       <h2>Search Titles</h2>
       <input id="search" placeholder="Search titles..." class="search-bar">
     </div>
+    </div>
+        <button id="viewList" class="list-button">View Workspace as List</button>
+  </div>
+    <div id="workspaceContainer">
+      <h2>Workspace</h2>
+      <p>Click an item to add it to the workspace. Remove items by dragging them out of the workspace.</p>
+      <div class="workspace" id="workspace"></div>
+   </div>
+   
     <div>
       <div class="image-grid" id="imageGrid"></div>
+    </div>
+  </div>
+
+    <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <h3>Workspace Items</h3>
+      <table id="workspaceTable" border="1" style="width:100%;">
+        <thead><tr><th>Thumbnail</th><th>Title</th><th>ID</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button id="downloadCSV" style="margin-top: 10px; padding: 5px 10px;">Download CSV</button>
+      <button id="closeModal" style="margin-top: 10px; padding: 5px 10px;">Close</button>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
     const filtersDiv = document.getElementById('filters');
+    const searchInput = document.getElementById('search');
     const imageGrid = document.getElementById('imageGrid');
     const workspace = document.getElementById('workspace');
-    const searchInput = document.getElementById('search');
     let data = [];
     let filter = 'all';
     let searchTerm = '';
+    let workspaceItems = [];
+
+    const viewListBtn = document.getElementById('viewList');
+    const modal = document.getElementById('modal');
+    const closeModalBtn = document.getElementById('closeModal');
+    const downloadCSVBtn = document.getElementById('downloadCSV');
 
     searchInput.addEventListener('input', (e) => {
       searchTerm = e.target.value.toLowerCase();
       renderImages();
     });
+
+    viewListBtn.addEventListener('click', () => {
+      renderWorkspaceTable();
+      modal.style.display = 'block';
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    downloadCSVBtn.addEventListener('click', () => {
+      downloadWorkspaceCSV();
+    });
+
+    function renderWorkspaceTable() {
+      const tbody = document.querySelector('#workspaceTable tbody');
+      tbody.innerHTML = '';
+      workspaceItems.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><img src="${item.url}" style="width:50px; height:50px; object-fit:cover;"></td><td>${item.name}</td><td>${item.id}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function downloadWorkspaceCSV() {
+      let csv = 'Title,ID,URL\n';
+      workspaceItems.forEach(item => {
+        csv += `"${item.name}","${item.id}","${item.url}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'workspace_items.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
 
     // helper to normalize names
     function normName(s){ return (s||'').toString().toLowerCase().trim(); }
@@ -235,14 +315,23 @@
         div.style.top = e.clientY - rect.top - offsetY + 'px';
       });
 
-      document.addEventListener('mouseup', () => {
+      document.addEventListener('mouseup', (e) => {
         if (isDragging) {
+          const rect = workspace.getBoundingClientRect();
+          if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+            workspace.removeChild(div);
+            const index = workspaceItems.findIndex(item => item.id === div.dataset.id);
+            if (index > -1) {
+              workspaceItems.splice(index, 1);
+            }
+          }
           isDragging = false;
           div.style.zIndex = '';
         }
       });
 
       workspace.appendChild(div);
+      workspaceItems.push({ id: img.id, name: img.name, url: img.url });
     }
 
     workspace.addEventListener('dragover', (e) => e.preventDefault());
@@ -260,5 +349,7 @@
 
     loadCSV();
   </script>
+
+
 </body>
 </html>
