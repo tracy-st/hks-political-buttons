@@ -97,13 +97,13 @@
     async function loadCSV() {
       const response = await fetch('../data/color_names.csv');
       const csvText = await response.text();
-      const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-      data = parsed.data.map((row, index) => ({
-        id: row.id || index.toString(),
-        name: row.name || row.image_name || `Image ${index + 1}`,
-        width: row.w_cm || '3',
-        color: row.color || 'unknown',
-        url: row.url || row.image_url || ''
+      const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
+      data = parsed.data.slice(1).map((row, index) => ({
+        id: row[1] || index.toString(),
+        name: row[7] || `Image ${index + 1}`,
+        width: row[2] || '3',
+        color: row[4] || 'unknown',
+        url: "../images/" + (row[0] || '')
       })).filter(item => item.url);
       renderFilters();
       renderImages();

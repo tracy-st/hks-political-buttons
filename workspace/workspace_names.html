@@ -107,14 +107,15 @@
     async function loadCSV() {
       const response = await fetch('../data/color_names.csv');
       const csvText = await response.text();
-      const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-      // parsed.data contains one row per color for an image. Group by image_url
+      const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
+      // parsed.data contains rows as arrays. Group by image_url (column 0)
       const byImage = {};
-      parsed.data.forEach(r => {
-        const img = (r.image_url || r.url || '').toString().replace(/^"|"$/g,'');
+      parsed.data.slice(1).forEach(row => {  // skip header
+        const r = row;
+        const img = (r[0] || '').toString().replace(/^"|"$/g,'');
         if(!img) return;
-        if(!byImage[img]) byImage[img] = { image_url: img, id: r.id || '', w_cm: r.w_cm || '', raw: [] };
-        byImage[img].raw.push(r);
+        if(!byImage[img]) byImage[img] = { image_url: img, id: r[1] || '', w_cm: r[2] || '', title: r[7] || '', raw: [] };
+        byImage[img].raw.push({ idx: r[3], color: r[4], proportion: r[5], color_name: r[6], title: r[7] });
       });
       data = Object.keys(byImage).map((imgUrl, idx) => {
         const group = byImage[imgUrl];
@@ -127,9 +128,9 @@
         })).filter(c=>c.hex);
         return {
           id: group.id || `img-${idx}`,
-          name: `Image ${idx+1}`,
+          name: group.title || `Image ${idx+1}`,
           width: parseFloat(group.w_cm) || 3,
-          url: group.image_url,
+          url: "../images/" + group.image_url,
           colors,
           raw: group.raw
         };
