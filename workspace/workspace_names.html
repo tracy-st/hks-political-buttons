@@ -14,6 +14,23 @@
     h2 {
       margin-bottom: 10px;
     }
+    .options {
+      padding: 2px 0 2px 0;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center
+    }
+    .search-bar {
+      width: 500px;
+      padding: 5px;
+      margin: 0 0 10px 20px;
+     display: inline-block
+    }
+
+    .filters {
+      margin-left: 20px
+    }
+    
     .filters button {
       margin-right: 5px;
       padding: 5px 10px;
@@ -29,6 +46,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       gap: 10px;
+      margin-top: 20px
     }
     .image-card {
       text-align: center;
@@ -86,10 +104,15 @@
       <h2>Workspace</h2>
       <div class="workspace" id="workspace"></div>
     </div>
-    <div>
+    <div class="options">
       <h2>Filter by Color</h2>
       <div class="filters" id="filters"></div>
-      <input id="search" placeholder="Search titles..." style="margin-top: 10px; padding: 5px; width: 200px;">
+    </div>
+    <div class="options">
+      <h2>Search Titles</h2>
+      <input id="search" placeholder="Search titles..." class="search-bar">
+    </div>
+    <div>
       <div class="image-grid" id="imageGrid"></div>
     </div>
   </div>
