@@ -89,6 +89,7 @@
     <div>
       <h2>Filter by Color</h2>
       <div class="filters" id="filters"></div>
+      <input id="search" placeholder="Search titles..." style="margin-top: 10px; padding: 5px; width: 200px;">
       <div class="image-grid" id="imageGrid"></div>
     </div>
   </div>
@@ -98,8 +99,15 @@
     const filtersDiv = document.getElementById('filters');
     const imageGrid = document.getElementById('imageGrid');
     const workspace = document.getElementById('workspace');
+    const searchInput = document.getElementById('search');
     let data = [];
     let filter = 'all';
+    let searchTerm = '';
+
+    searchInput.addEventListener('input', (e) => {
+      searchTerm = e.target.value.toLowerCase();
+      renderImages();
+    });
 
     // helper to normalize names
     function normName(s){ return (s||'').toString().toLowerCase().trim(); }
@@ -159,7 +167,11 @@
     }
 
     function renderImages() {
-      const images = filter === 'all' ? data : data.filter(i => i.colors.some(c=> c.color_name === filter));
+      const images = data.filter(i => {
+        const matchesColor = filter === 'all' || i.colors.some(c => c.color_name === filter);
+        const matchesSearch = !searchTerm || i.name.toLowerCase().includes(searchTerm);
+        return matchesColor && matchesSearch;
+      });
       imageGrid.innerHTML = '';
       images.forEach(img => {
         const card = document.createElement('div');
