@@ -153,7 +153,7 @@
         binEl.appendChild(lbl);
         const thumbs = document.createElement('div'); thumbs.className='thumbs';
         bin.items.forEach(it=>{
-          const img = document.createElement('img'); img.className='thumb'; img.src = it.image_url; img.title = `${it.topColor.color_name || ''} ${it.topColor.hex || ''} ${Math.round((it.topColor.proportion||0)*100)}%`;
+          const img = document.createElement('img'); img.className='thumb'; img.src = "../images/" + it.image_url; img.title = `${it.topColor.color_name || ''} ${it.topColor.hex || ''} ${Math.round((it.topColor.proportion||0)*100)}%`;
           img.addEventListener('click', ()=> openModal(it));
           thumbs.appendChild(img);
         });
@@ -167,7 +167,7 @@
         const nl = document.createElement('div'); nl.className='label'; nl.textContent = label; nb.appendChild(nl);
         const nthumbs = document.createElement('div'); nthumbs.className='thumbs';
         (items || []).forEach(it=>{
-          const img = document.createElement('img'); img.className='thumb'; img.src = it.image_url; img.title = `${it.topColor.color_name || ''} ${it.topColor.hex || ''}`; img.addEventListener('click', ()=> openModal(it)); nthumbs.appendChild(img);
+          const img = document.createElement('img'); img.className='thumb'; img.src = "../images/" + it.image_url; img.title = `${it.topColor.color_name || ''} ${it.topColor.hex || ''}`; img.addEventListener('click', ()=> openModal(it)); nthumbs.appendChild(img);
         });
         nb.appendChild(nthumbs);
         if(showCount){ const cnt = document.createElement('div'); cnt.className='count'; cnt.textContent = (items||[]).length; nb.appendChild(cnt); }
@@ -181,7 +181,7 @@
 
     function openModal(item){
       const body = document.getElementById('modalBody'); body.innerHTML = '';
-      const img = document.createElement('img'); img.src = item.image_url; body.appendChild(img);
+      const img = document.createElement('img'); img.src = "../images/" + item.image_url; body.appendChild(img);
       const p = document.createElement('div'); p.style.marginTop='8px'; p.textContent = `Top color: ${item.topColor.color_name || ''} ${item.topColor.hex || ''} — ${Math.round((item.topColor.proportion||0)*100)}%`;
       body.appendChild(p);
       document.getElementById('modal').style.display='flex';
