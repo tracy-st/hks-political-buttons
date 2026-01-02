@@ -1,0 +1,40 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+.filters {
+    margin-bottom: 20px;
+}
+
+.filters > div {
+    margin: 10px 0;
+}
+
+#results {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.item {
+    margin: 10px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    width: 200px;
+}
+
+.item img {
+    max-width: 100%;
+    height: auto;
+}
+
+.palette {
+    display: flex;
+    margin-top: 5px;
+}
+
+.color {
+    width: 20px;
+    height: 20px;
+    margin-right: 2px;
+}

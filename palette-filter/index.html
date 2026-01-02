@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palette Filter App</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
+</head>
+<body>
+    <h1>Political Buttons Palette Filter</h1>
+    <div class="filters">
+        <div>
+            <label>Pick Color: <input type="color" id="colorPicker" value="#ff0000"></label>
+        </div>
+        <div>
+            <label>At least <input type="number" id="minPercent" min="0" max="100" value="10"> % of this color</label>
+            <label>Tolerance: <input type="range" id="tolerance" min="0" max="100" value="20"> <span id="tolValue">20</span></label>
+        </div>
+        <div>
+            <label>Exclude Colors (comma separated, e.g., red, blue): <input type="text" id="excludeColors" placeholder="red, blue"></label>
+        </div>
+        <div>
+            <label><input type="checkbox" id="dominantOnly"> Dominant color only</label>
+        </div>
+        <button id="filterBtn">Filter</button>
+        <button id="clearBtn">Clear</button>
+    </div>
+    <div id="results"></div>
+    <script src="app.js"></script>
+</body>
+</html>
