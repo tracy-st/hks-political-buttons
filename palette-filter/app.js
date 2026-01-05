@@ -49,6 +49,10 @@ document.getElementById('colorPicker').addEventListener('input', function() {
     syncHexInput();
     filter();
 });
+document.getElementById('colorPicker').addEventListener('change', function() {
+    syncHexInput();
+    filter();
+});
 document.getElementById('hexInput').addEventListener('input', function() {
     syncColorPicker();
     filter();
