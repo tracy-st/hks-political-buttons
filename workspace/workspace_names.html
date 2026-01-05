@@ -76,6 +76,8 @@
       color: #fff;
     }
 
+    .highlight {background-color: yellow}
+
     .image-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -152,7 +154,9 @@
   </div>
     <div id="workspaceContainer">
       <h2>Workspace</h2>
-      <p>Click an item to add it to the workspace. Remove items by dragging them out of the workspace.</p>
+      <p>To <span class="highlight">add</span> an item to the workspace, click the result.</p>
+      <p>To <span class="highlight">move</span> an item within the workspace, click and drag.</p>
+      <p>To <span class="highlight">remove</span> an item, click and drag it out of the workspace.</p>
       <div class="workspace" id="workspace"></div>
    </div>
    
