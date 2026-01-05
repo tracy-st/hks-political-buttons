@@ -59,7 +59,6 @@ document.getElementById('hexInput').addEventListener('input', function() {
 });
 document.getElementById('minPercent').addEventListener('input', filter);
 document.getElementById('tolerance').addEventListener('input', filter);
-document.getElementById('excludeColors').addEventListener('input', filter);
 document.getElementById('clearBtn').addEventListener('click', clearFilters);
 
 function syncHexInput() {
@@ -84,8 +83,6 @@ function filter() {
     const pickedColor = document.getElementById('colorPicker').value;
     const minPercent = parseFloat(document.getElementById('minPercent').value) / 100;
     const tolerance = parseInt(document.getElementById('tolerance').value);
-    const excludeStr = document.getElementById('excludeColors').value.toLowerCase();
-    const excludeColors = excludeStr.split(',').map(s => s.trim()).filter(s => s);
 
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = '';
@@ -118,17 +115,7 @@ function filter() {
             }
         }
 
-        // Check exclude
-        let hasExcluded = false;
-        for (const color of colorsToCheck) {
-            const name = chroma(color.hex).name().toLowerCase();
-            if (excludeColors.includes(name)) {
-                hasExcluded = true;
-                break;
-            }
-        }
-
-        if (hasPicked && !hasExcluded) {
+        if (hasPicked) {
             // Display
             const div = document.createElement('div');
             div.className = 'item';
@@ -175,7 +162,6 @@ function clearFilters() {
     document.getElementById('minPercent').value = 10;
     document.getElementById('tolerance').value = 60;
     document.getElementById('tolValue').textContent = 60;
-    document.getElementById('excludeColors').value = '';
     
     // Clear results and show loading state temporarily
     document.getElementById('results').innerHTML = '';
