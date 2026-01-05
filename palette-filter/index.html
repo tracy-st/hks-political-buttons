@@ -12,7 +12,10 @@
     <h1>Political Buttons Palette Filter</h1>
     <div class="filters">
         <div>
-            <label>Pick Color: <input type="color" id="colorPicker" value="#ff0000"></label>
+            <label>Search: <input type="text" id="searchInput" placeholder="Search titles and filenames..."></label>
+        </div>
+        <div>
+            <label>Pick Color: <input type="color" id="colorPicker" value="#ffffff"></label>
         </div>
         <div>
             <label>At least <input type="number" id="minPercent" min="0" max="100" value="10"> % of this color</label>
@@ -24,10 +27,19 @@
         <div>
             <label><input type="checkbox" id="dominantOnly"> Dominant color only</label>
         </div>
-        <button id="filterBtn">Filter</button>
         <button id="clearBtn">Clear</button>
     </div>
     <div id="results"></div>
+    <div id="resultsCounter">Showing 0 results</div>
+    
+    <!-- Modal -->
+    <div id="paletteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+    
     <script src="app.js"></script>
 </body>
 </html>
