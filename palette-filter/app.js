@@ -155,6 +155,9 @@ function clearFilters() {
     document.getElementById('dominantOnly').checked = false;
     document.getElementById('results').innerHTML = '';
     document.getElementById('resultsCounter').textContent = 'Showing 0 results';
+    
+    // Show all results after clearing filters
+    filter();
 }
 
 function showPaletteModal(filename) {
