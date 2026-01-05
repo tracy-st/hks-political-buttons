@@ -45,12 +45,36 @@ document.getElementById('tolerance').addEventListener('input', function() {
 });
 
 document.getElementById('searchInput').addEventListener('input', filter);
-document.getElementById('colorPicker').addEventListener('input', filter);
+document.getElementById('colorPicker').addEventListener('input', function() {
+    syncHexInput();
+    filter();
+});
+document.getElementById('hexInput').addEventListener('input', function() {
+    syncColorPicker();
+    filter();
+});
 document.getElementById('minPercent').addEventListener('input', filter);
 document.getElementById('tolerance').addEventListener('input', filter);
 document.getElementById('excludeColors').addEventListener('input', filter);
 document.getElementById('dominantOnly').addEventListener('change', filter);
 document.getElementById('clearBtn').addEventListener('click', clearFilters);
+
+function syncHexInput() {
+    const colorPicker = document.getElementById('colorPicker');
+    const hexInput = document.getElementById('hexInput');
+    hexInput.value = colorPicker.value;
+}
+
+function syncColorPicker() {
+    const colorPicker = document.getElementById('colorPicker');
+    const hexInput = document.getElementById('hexInput');
+    const hexValue = hexInput.value;
+    
+    // Validate hex format
+    if (/^#[0-9A-Fa-f]{6}$/.test(hexValue)) {
+        colorPicker.value = hexValue;
+    }
+}
 
 function filter() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
@@ -148,9 +172,10 @@ function filter() {
 function clearFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('colorPicker').value = '#ffffff';
+    document.getElementById('hexInput').value = '#ffffff';
     document.getElementById('minPercent').value = 10;
-    document.getElementById('tolerance').value = 20;
-    document.getElementById('tolValue').textContent = 20;
+    document.getElementById('tolerance').value = 60;
+    document.getElementById('tolValue').textContent = 60;
     document.getElementById('excludeColors').value = '';
     document.getElementById('dominantOnly').checked = false;
     document.getElementById('results').innerHTML = '';
