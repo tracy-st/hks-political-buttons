@@ -56,7 +56,6 @@ document.getElementById('hexInput').addEventListener('input', function() {
 document.getElementById('minPercent').addEventListener('input', filter);
 document.getElementById('tolerance').addEventListener('input', filter);
 document.getElementById('excludeColors').addEventListener('input', filter);
-document.getElementById('dominantOnly').addEventListener('change', filter);
 document.getElementById('clearBtn').addEventListener('click', clearFilters);
 
 function syncHexInput() {
@@ -83,7 +82,6 @@ function filter() {
     const tolerance = parseInt(document.getElementById('tolerance').value);
     const excludeStr = document.getElementById('excludeColors').value.toLowerCase();
     const excludeColors = excludeStr.split(',').map(s => s.trim()).filter(s => s);
-    const dominantOnly = document.getElementById('dominantOnly').checked;
 
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = '';
@@ -101,9 +99,6 @@ function filter() {
         if (!matchesSearch) return;
         
         let colorsToCheck = item.colors;
-        if (dominantOnly) {
-            colorsToCheck = [colorsToCheck.reduce((max, c) => c.frequency > max.frequency ? c : max)];
-        }
 
         // Check if has the picked color with min percent
         // Skip color filtering if white is selected (default "show all" mode)
@@ -166,7 +161,7 @@ function filter() {
 
     // Update results counter
     const counterEl = document.getElementById('resultsCounter');
-    counterEl.textContent = `Showing ${resultCount} result${resultCount !== 1 ? 's' : ''}`;
+    counterEl.textContent = counterText;
 }
 
 function clearFilters() {
@@ -177,12 +172,13 @@ function clearFilters() {
     document.getElementById('tolerance').value = 60;
     document.getElementById('tolValue').textContent = 60;
     document.getElementById('excludeColors').value = '';
-    document.getElementById('dominantOnly').checked = false;
+    
+    // Clear results and show loading state temporarily
     document.getElementById('results').innerHTML = '';
-    document.getElementById('resultsCounter').textContent = 'Showing 0 results';
+    document.getElementById('resultsCounter').textContent = 'Loading...';
     
     // Show all results after clearing filters
-    filter();
+    setTimeout(() => filter(), 5);
 }
 
 function showPaletteModal(filename) {
