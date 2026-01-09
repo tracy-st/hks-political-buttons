@@ -261,35 +261,81 @@
     // helper to normalize names
     function normName(s){ return (s||'').toString().toLowerCase().trim(); }
 
+    function colorNameFromHex(hex){
+      // map HSL hue ranges to simple color names
+      const {r,g,b} = hexToRgb(hex);
+      const hsl = rgbToHsl(r,g,b);
+      const h = hsl.h;
+      const l = hsl.l;
+      const s = hsl.s;
+      if(l < 0.12) return 'black';
+      if(l > 0.92) return 'white';
+      if(s < 0.12) return 'gray';
+      if(h >= 345 || h < 15) return 'red';
+      if(h >= 15 && h < 45) return 'orange';
+      if(h >= 45 && h < 75) return 'yellow';
+      if(h >= 75 && h < 165) return 'green';
+      if(h >= 165 && h < 195) return 'cyan';
+      if(h >= 195 && h < 255) return 'blue';
+      if(h >= 255 && h < 285) return 'purple';
+      if(h >= 285 && h < 330) return 'magenta';
+      return 'pink';
+    }
+
+    function groupColors(colors, tolerance = 50) {
+      const groups = [];
+      colors.forEach(c => {
+        let found = false;
+        for (const g of groups) {
+          if (colorDistance(hexToRgb(c.hex), hexToRgb(g[0].hex)) <= tolerance) {
+            g.push(c);
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          groups.push([c]);
+        }
+      });
+      // Assign color_name to each color in the group based on the first color's hex
+      groups.forEach(g => {
+        const name = colorNameFromHex(g[0].hex);
+        g.forEach(c => c.color_name = name);
+      });
+      return colors;
+    }
+
     async function loadCSV() {
-      const response = await fetch('../data/color_names.csv');
+      const response = await fetch('../data/pylette_metadata.csv');
       const csvText = await response.text();
-      const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
-      // parsed.data contains rows as arrays. Group by image_url (column 0)
+      const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+      // parsed.data contains rows as objects. Group by image_url
       const byImage = {};
-      parsed.data.slice(1).forEach(row => {  // skip header
-        const r = row;
-        const img = (r[0] || '').toString().replace(/^"|"$/g,'');
+      parsed.data.forEach(row => {
+        const img = (row.image_url || '').toString().replace(/^"|"$/g,'');
         if(!img) return;
-        if(!byImage[img]) byImage[img] = { image_url: img, id: r[1] || '', w_cm: r[2] || '', title: r[7] || '', raw: [] };
-        byImage[img].raw.push({ idx: r[3], color: r[4], proportion: r[5], color_name: r[6], title: r[7] });
+        if(!byImage[img]) byImage[img] = { image_url: img, filename: row.filename, name: row.name, office: row.office, party: row.party, date_int: row.date_int, w_cm: row.w_cm, colors: [] };
+        byImage[img].colors.push({
+          hex: (row.hex || '').toString(),
+          proportion: parseFloat(row.frequency) || 0,
+          r: parseInt(row.R),
+          g: parseInt(row.G),
+          b: parseInt(row.B)
+        });
       });
       data = Object.keys(byImage).map((imgUrl, idx) => {
         const group = byImage[imgUrl];
-        // sort by idx field if present to keep top colors first
-        group.raw.sort((a,b)=> (parseInt(a.idx)||0) - (parseInt(b.idx)||0));
-        const colors = group.raw.map(rr=>({
-          hex: (rr.color||'').toString(),
-          proportion: parseFloat(rr.proportion) || 0,
-          color_name: normName(rr.color_name || rr.name || '')
-        })).filter(c=>c.hex);
+        // sort colors by proportion descending
+        group.colors.sort((a,b)=> b.proportion - a.proportion);
+        // group similar colors within tolerance 50
+        groupColors(group.colors, 50);
         return {
-          id: group.id || `img-${idx}`,
-          name: group.title || `Image ${idx+1}`,
+          id: group.filename || `img-${idx}`,
+          name: group.name || `Image ${idx+1}`,
           width: parseFloat(group.w_cm) || 3,
-          url: "../images/" + group.image_url,
-          colors,
-          raw: group.raw
+          url: "../images/" + group.image_url.split('/').pop(), // extract filename
+          colors: group.colors,
+          raw: group.colors
         };
       });
       renderFilters();
@@ -316,11 +362,24 @@
     }
 
     function renderImages() {
-      const images = data.filter(i => {
-        const matchesColor = filter === 'all' || i.colors.some(c => c.color_name === filter);
+      let images = data.filter(i => {
+        let matchesColor = filter === 'all';
+        if (filter === 'black') {
+          // For black filter, require black to be the second-highest color
+          matchesColor = i.colors.length > 1 && i.colors[1].color_name === 'black';
+        } else if (filter !== 'all') {
+          matchesColor = i.colors.some(c => c.color_name === filter);
+        }
         const matchesSearch = !searchTerm || i.name.toLowerCase().includes(searchTerm);
         return matchesColor && matchesSearch;
       });
+      // Sort by proportion of matching color, descending
+      if (filter !== 'all') {
+        images = images.sort((a, b) => {
+          const getMaxProp = (img) => Math.max(...img.colors.filter(c => c.color_name === filter).map(c => c.proportion));
+          return getMaxProp(b) - getMaxProp(a);
+        });
+      }
       imageGrid.innerHTML = '';
       images.forEach(img => {
         const card = document.createElement('div');
