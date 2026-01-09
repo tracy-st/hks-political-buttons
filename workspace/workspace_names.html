@@ -154,9 +154,10 @@
   </div>
     <div id="workspaceContainer">
       <h2>Workspace</h2>
-      <p>To <span class="highlight">add</span> an item to the workspace, click the result.</p>
+      <p>To <span class="highlight">add</span> an item to the workspace, click the button image in the search result.</p>
       <p>To <span class="highlight">move</span> an item within the workspace, click and drag.</p>
       <p>To <span class="highlight">remove</span> an item, click and drag it out of the workspace.</p>
+      <p>To see more information about the colors, click the color palette in a result.</p>
       <div class="workspace" id="workspace"></div>
    </div>
    
@@ -177,6 +178,14 @@
     </div>
   </div>
 
+  <div id="imageModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1001;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <img id="modalImg" style="max-width:100%; height:auto; display:block; margin-bottom:10px;">
+      <div id="modalColors"></div>
+      <button id="closeImageModal" style="margin-top:10px;">Close</button>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
     const filtersDiv = document.getElementById('filters');
@@ -193,6 +202,9 @@
     const closeModalBtn = document.getElementById('closeModal');
     const downloadCSVBtn = document.getElementById('downloadCSV');
     const toggleTopBarBtn = document.getElementById('toggleTopBar');
+
+    const imageModal = document.getElementById('imageModal');
+    const closeImageModalBtn = document.getElementById('closeImageModal');
 
     searchInput.addEventListener('input', (e) => {
       searchTerm = e.target.value.toLowerCase();
@@ -216,6 +228,10 @@
 
     downloadCSVBtn.addEventListener('click', () => {
       downloadWorkspaceCSV();
+    });
+
+    closeImageModalBtn.addEventListener('click', () => {
+      imageModal.style.display = 'none';
     });
 
     function renderWorkspaceTable() {
@@ -313,10 +329,48 @@
         card.ondragstart = (e) => e.dataTransfer.setData('id', img.id);
         card.onclick = () => addToWorkspace(img, 20, 20);
         // show a small swatch row for the top colors
-        const swatches = img.colors.slice(0,5).map(c=> `<span title="${c.color_name}" style="display:inline-block;width:14px;height:14px;background:${c.hex};margin-right:4px;border:1px solid #fff"></span>`).join('');
-        card.innerHTML = `<img src="${img.url}" alt="${img.name}"><div>${swatches}<div style="margin-top:6px">${img.name}</div></div>`;
+        const imgEl = document.createElement('img');
+        imgEl.src = img.url;
+        imgEl.alt = img.name;
+        card.appendChild(imgEl);
+        
+        const swatchesDiv = document.createElement('div');
+        img.colors.slice(0,5).forEach(c => {
+          const span = document.createElement('span');
+          span.title = c.color_name;
+          span.style.display = 'inline-block';
+          span.style.width = '14px';
+          span.style.height = '14px';
+          span.style.background = c.hex;
+          span.style.marginRight = '4px';
+          span.style.border = '1px solid #fff';
+          swatchesDiv.appendChild(span);
+        });
+        card.appendChild(swatchesDiv);
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.style.marginTop = '6px';
+        nameDiv.style.cursor = 'pointer';
+        nameDiv.textContent = img.name;
+        nameDiv.onclick = (e) => { e.stopPropagation(); openModal(img.id); };
+        card.appendChild(nameDiv);
+        
         imageGrid.appendChild(card);
       });
+    }
+
+    function openModal(id) {
+      const img = data.find(i => i.id === id);
+      document.getElementById('modalImg').src = img.url;
+      const colorsDiv = document.getElementById('modalColors');
+      colorsDiv.innerHTML = '';
+      img.colors.forEach(c => {
+        const div = document.createElement('div');
+        div.style.marginBottom = '5px';
+        div.innerHTML = `<span style="display:inline-block;width:20px;height:20px;background:${c.hex};border:1px solid #000;margin-right:10px;vertical-align:middle;"></span> <strong>${c.hex}</strong> - ${c.color_name} (${Math.round(c.proportion*100)}%)`;
+        colorsDiv.appendChild(div);
+      });
+      imageModal.style.display = 'block';
     }
 
     function addToWorkspace(img, x = 50, y = 50) {
