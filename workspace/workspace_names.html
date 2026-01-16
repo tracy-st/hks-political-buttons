@@ -55,6 +55,13 @@
      display: inline-block
     }
 
+    .view-bar {
+      display: flex;
+      gap: 10px;
+      margin-left: 20px;
+      justify-content: flex-end
+    }
+
     .instructions p {
       font-size:0.8em
     }
@@ -63,7 +70,7 @@
       margin-left: 20px
     }
 
-    .right-controls button {
+    .gray-button {
       margin-left: auto;
       padding: 10px;
       border: 1px solid #000;
@@ -72,19 +79,20 @@
       margin: 5px
     }
     
-    .filters button {
+    button {
       margin-right: 5px;
       padding: 5px 10px;
       border: none;
       background: #ccc;
       cursor: pointer;
     }
-    .filters button.active {
+    button.active {
       background: #666;
       color: #fff;
     }
 
-    .highlight {background-color: yellow}
+    .highlight {background-color: palegoldenrod;
+    padding:2px}
 
     .image-grid {
       display: grid;
@@ -160,19 +168,14 @@
       <h2>Search Titles</h2>
       <input id="search" placeholder="Search titles..." class="search-bar">
     </div>
+    <div class="view-bar">
+        <button id="viewList">View Workspace as List</button>
+        <button id="workspaceFullscreenBtn">View Workspace Full Screen</button>
+        <button id="instructionsBtn">Instructions</button>
     </div>
-    <div class="instructions">
-  
-      <p>To <span class="highlight">add</span> an item to the workspace, click the button image in the search result.</p>
-      <p>To <span class="highlight">move</span> an item within the workspace, click and drag.</p>
-      <p>To <span class="highlight">remove</span> an item, click and drag it out of the workspace.</p>
-      <p>To see more information about the colors, click the Title of a result.</p>
     </div>
     <div class="right-controls">
         <button id="toggleTopBar">Collapse</button>
-        <button id="viewList" class="list-button">View Workspace as List</button>
-        <button id="workspaceFullscreenBtn">Workspace Full Screen</button>
-
     </div>
   </div>
     <div id="workspaceContainer">
@@ -198,6 +201,13 @@
     </div>
   </div>
 
+  <div id="instructionsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <div id="instructionsText"></div>
+      <button id="closeInstructionsModal" style="margin-top:10px;">Close</button>
+    </div>
+  </div>
+
   <div id="imageModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1001;">
     <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
       <img id="modalImg" style="max-width:100%; height:auto; display:block; margin-bottom:10px;">
@@ -220,7 +230,9 @@
     let panStartX, panStartY, panLastX, panLastY;
 
     const viewListBtn = document.getElementById('viewList');
+    const instructionsBtn = document.getElementById('instructionsBtn');
     const modal = document.getElementById('modal');
+    const instructionsModal = document.getElementById('instructionsModal');
     const closeModalBtn = document.getElementById('closeModal');
     const downloadCSVBtn = document.getElementById('downloadCSV');
     const toggleTopBarBtn = document.getElementById('toggleTopBar');
@@ -228,6 +240,7 @@
 
     const imageModal = document.getElementById('imageModal');
     const closeImageModalBtn = document.getElementById('closeImageModal');
+    const closeInstructionsModal = document.getElementById('closeInstructionsModal');
 
     searchInput.addEventListener('input', (e) => {
       searchTerm = e.target.value.toLowerCase();
@@ -246,8 +259,6 @@
     toggleTopBarBtn.addEventListener('click', () => {
       const topBar = document.querySelector('.top-bar');
       topBar.classList.toggle('collapsed');
-      const instructions = document.querySelectorAll('.instructions');
-      instructions.forEach(p => p.style.display = topBar.classList.contains('collapsed') ? 'none' : '');
       toggleTopBarBtn.textContent = topBar.classList.contains('collapsed') ? 'Expand' : 'Collapse';
     });
 
@@ -299,6 +310,15 @@
       imageModal.style.display = 'none';
     });
 
+    instructionsBtn.addEventListener('click', () => {
+      renderInstructions();
+      instructionsModal.style.display = 'block';
+    });
+
+    closeInstructionsModal.addEventListener('click', () => {
+      instructionsModal.style.display = 'none';
+    });
+
     function renderWorkspaceTable() {
       const tbody = document.querySelector('#workspaceTable tbody');
       tbody.innerHTML = '';
@@ -307,6 +327,19 @@
         tr.innerHTML = `<td><img src="${item.url}" style="width:50px; height:50px; object-fit:cover;"></td><td>${item.name}</td><td>${item.id}</td>`;
         tbody.appendChild(tr);
       });
+    }
+
+    function renderInstructions() {
+      const div = document.querySelector('#instructionsText');
+      div.innerHTML = `
+        <h3>Instructions</h3>
+        <p>Use the color filters and search bar to find images by their dominant colors and titles.</p>
+        <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
+        <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
+        <p>You can pan the workspace by clicking and dragging on empty space.</p>
+        <span class="highlight">View Workspace Full Screen"</span> Expand the workspace to full screen for easier arrangement of images.</p>
+        <span class="highlight">View Workspace as List</span>: See a tabular view of all images currently in the workspace, with an option to download the list as a CSV file.</p>
+      `;
     }
 
     function downloadWorkspaceCSV() {
