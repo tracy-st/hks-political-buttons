@@ -34,10 +34,14 @@
     .top-bar.collapsed .list-button {
       display: none;
     }
+
     .top-bar.collapsed {
       padding: 10px 10px 10px 0;
       justify-content: flex-end;
       background: transparent;
+    }
+    #toggleTopBar button {
+      align-self: flex-start;
     }
     .right-controls {
       display: flex;
@@ -49,6 +53,10 @@
       padding: 5px;
       margin: 0 0 10px 20px;
      display: inline-block
+    }
+
+    .instructions p {
+      font-size:0.8em
     }
 
     .filters {
@@ -104,9 +112,6 @@
       background: #31302e;
       position: relative;
       overflow: hidden;
-      font-size: 30em;
-      color: white;
-      font-weight:bold;
       height:400px
     }
     .workspace-card {
@@ -147,17 +152,22 @@
       <input id="search" placeholder="Search titles..." class="search-bar">
     </div>
     </div>
+    <div class="instructions">
+  
+      <p>To <span class="highlight">add</span> an item to the workspace, click the button image in the search result.</p>
+      <p>To <span class="highlight">move</span> an item within the workspace, click and drag.</p>
+      <p>To <span class="highlight">remove</span> an item, click and drag it out of the workspace.</p>
+      <p>To see more information about the colors, click the Title of a result.</p>
+    </div>
     <div class="right-controls">
-        <button id="viewList" class="list-button">View Workspace as List</button>
         <button id="toggleTopBar">Collapse</button>
+        <button id="viewList" class="list-button">View Workspace as List</button>
+
     </div>
   </div>
     <div id="workspaceContainer">
       <h2>Workspace</h2>
-      <p>To <span class="highlight">add</span> an item to the workspace, click the button image in the search result.</p>
-      <p>To <span class="highlight">move</span> an item within the workspace, click and drag.</p>
-      <p>To <span class="highlight">remove</span> an item, click and drag it out of the workspace.</p>
-      <p>To see more information about the colors, click the color palette in a result.</p>
+      
       <div class="workspace" id="workspace"></div>
    </div>
    
@@ -223,6 +233,8 @@
     toggleTopBarBtn.addEventListener('click', () => {
       const topBar = document.querySelector('.top-bar');
       topBar.classList.toggle('collapsed');
+      const instructions = document.querySelectorAll('.instructions');
+      instructions.forEach(p => p.style.display = topBar.classList.contains('collapsed') ? 'none' : '');
       toggleTopBarBtn.textContent = topBar.classList.contains('collapsed') ? 'Expand' : 'Collapse';
     });
 
@@ -317,13 +329,7 @@
 
     function renderImages() {
       let images = data.filter(i => {
-        let matchesColor = filter === 'all';
-        if (filter === 'black') {
-          // For black filter, require black to be the second-highest color
-          matchesColor = i.colors.length > 1 && i.colors[1].color_name === 'black';
-        } else if (filter !== 'all') {
-          matchesColor = i.colors.some(c => c.color_name === filter);
-        }
+        const matchesColor = filter === 'all' || i.colors.some(c => c.color_name === filter);
         const matchesSearch = !searchTerm || i.name.toLowerCase().includes(searchTerm);
         return matchesColor && matchesSearch;
       });
@@ -340,7 +346,7 @@
         card.className = 'image-card';
         card.draggable = true;
         card.ondragstart = (e) => e.dataTransfer.setData('id', img.id);
-        card.onclick = () => addToWorkspace(img, 20, 20);
+        card.onclick = () => addToWorkspace(img, 0, 0);
         // show a small swatch row for the top colors
         const imgEl = document.createElement('img');
         imgEl.src = img.url;
