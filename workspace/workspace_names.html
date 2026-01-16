@@ -521,8 +521,8 @@
       cards.forEach(card => {
         const currentLeft = parseFloat(card.style.left || 0);
         const currentTop = parseFloat(card.style.top || 0);
-        card.style.left = (currentLeft - deltaX) + 'px';
-        card.style.top = (currentTop - deltaY) + 'px';
+        card.style.left = (currentLeft + deltaX) + 'px';
+        card.style.top = (currentTop + deltaY) + 'px';
       });
       panLastX = e.clientX;
       panLastY = e.clientY;
