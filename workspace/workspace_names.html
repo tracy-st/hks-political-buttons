@@ -112,7 +112,16 @@
       background: #31302e;
       position: relative;
       overflow: hidden;
-      height:400px
+      height:400px;
+      user-select: none;
+    }
+    .workspace.fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 9999;
     }
     .workspace-card {
       text-align: center;
@@ -162,6 +171,7 @@
     <div class="right-controls">
         <button id="toggleTopBar">Collapse</button>
         <button id="viewList" class="list-button">View Workspace as List</button>
+        <button id="workspaceFullscreenBtn">Workspace Full Screen</button>
 
     </div>
   </div>
@@ -206,12 +216,15 @@
     let filter = 'all';
     let searchTerm = '';
     let workspaceItems = [];
+    let isPanning = false;
+    let panStartX, panStartY, panLastX, panLastY;
 
     const viewListBtn = document.getElementById('viewList');
     const modal = document.getElementById('modal');
     const closeModalBtn = document.getElementById('closeModal');
     const downloadCSVBtn = document.getElementById('downloadCSV');
     const toggleTopBarBtn = document.getElementById('toggleTopBar');
+    const workspaceFullscreenBtn = document.getElementById('workspaceFullscreenBtn');
 
     const imageModal = document.getElementById('imageModal');
     const closeImageModalBtn = document.getElementById('closeImageModal');
@@ -240,6 +253,46 @@
 
     downloadCSVBtn.addEventListener('click', () => {
       downloadWorkspaceCSV();
+    });
+
+    workspaceFullscreenBtn.addEventListener('click', () => {
+      const ws = document.getElementById('workspace');
+      const rect = ws.getBoundingClientRect();
+      const cards = ws.querySelectorAll('.workspace-card');
+      cards.forEach(card => {
+        const currentLeft = parseFloat(card.style.left || 0);
+        const currentTop = parseFloat(card.style.top || 0);
+        card.style.left = (currentLeft + rect.left) + 'px';
+        card.style.top = (currentTop + rect.top) + 'px';
+      });
+      ws.classList.add('fullscreen');
+      document.querySelector('.top-bar').style.display = 'none';
+      document.querySelector('.image-grid').style.display = 'none';
+      document.querySelector('#workspaceContainer h2').style.display = 'none';
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'X';
+      closeBtn.style.position = 'absolute';
+      closeBtn.style.top = '10px';
+      closeBtn.style.right = '10px';
+      closeBtn.style.zIndex = '10001';
+      closeBtn.style.padding = '5px 10px';
+      closeBtn.style.background = '#ccc';
+      closeBtn.style.border = '1px solid #000';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.onclick = () => {
+        cards.forEach(card => {
+          const currentLeft = parseFloat(card.style.left || 0);
+          const currentTop = parseFloat(card.style.top || 0);
+          card.style.left = (currentLeft - rect.left) + 'px';
+          card.style.top = (currentTop - rect.top) + 'px';
+        });
+        ws.classList.remove('fullscreen');
+        document.querySelector('.top-bar').style.display = '';
+        document.querySelector('.image-grid').style.display = '';
+        document.querySelector('#workspaceContainer h2').style.display = '';
+        closeBtn.remove();
+      };
+      ws.appendChild(closeBtn);
     });
 
     closeImageModalBtn.addEventListener('click', () => {
@@ -448,6 +501,35 @@
         const y = e.clientY - rect.top;
         addToWorkspace(img, x, y);
       }
+    });
+
+    workspace.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.workspace-card')) return;
+      isPanning = true;
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+      panLastX = e.clientX;
+      panLastY = e.clientY;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      const deltaX = e.clientX - panLastX;
+      const deltaY = e.clientY - panLastY;
+      const cards = workspace.querySelectorAll('.workspace-card');
+      cards.forEach(card => {
+        const currentLeft = parseFloat(card.style.left || 0);
+        const currentTop = parseFloat(card.style.top || 0);
+        card.style.left = (currentLeft - deltaX) + 'px';
+        card.style.top = (currentTop - deltaY) + 'px';
+      });
+      panLastX = e.clientX;
+      panLastY = e.clientY;
+    });
+
+    document.addEventListener('mouseup', () => {
+      isPanning = false;
     });
 
     loadCSV();
