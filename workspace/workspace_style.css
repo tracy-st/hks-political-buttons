@@ -74,18 +74,28 @@
   padding: 10px;
 }
 
-    .sidebar.collapsed div:first-child,
-    .sidebar.collapsed div:nth-child(2),
-    .sidebar.collapsed .list-button {
-      display:none
-    }
+.sidebar.collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    overflow: hidden;
+}
 
-    .sidebar.collapsed {
-      padding: 10px 10px 10px 0;
-      justify-content: flex-end;
-      background: transparent;
-      width: 5%
-    }
+.sidebar.collapsed div:first-child,
+.sidebar.collapsed div:nth-child(2) {
+  display: none;
+}
+
+/* Keep the expand/collapse button visible when sidebar is collapsed */
+.sidebar.collapsed .list-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  margin: 0 6px;
+  pointer-events: auto;
+  z-index: 1001;
+}
+
     #toggleTopBar button {
       align-self: flex-start;
     }
@@ -151,7 +161,7 @@
       */
 
     .image-grid {
-         display: grid;
+    display: grid;
       grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       gap: 10px;
       margin-top: 20px
@@ -193,8 +203,15 @@
   background: #31302e;
   position: relative;
   overflow: hidden;
-  height: auto;
+  height: auto;font
   user-select: none;
+}
+
+.workspace span {
+    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    font-size: 80vh;
+    color: darkgray
+
 }
 
     .workspace.fullscreen {
