@@ -20,13 +20,13 @@
       background: #fff;
       padding: 10px;
       z-index: 1000;
-;
     }
 
 /* container */
 .content-with-sidebars {
     display:flex;
     flex-wrap:nowrap;
+    align-items: flex-start;
 }
 
 /* columns */
@@ -63,15 +63,28 @@
     }
 }
 
+/* Keep the left workspace container and right sidebar pinned */
+#workspaceContainer.sticky,
+.sidebar.sticky {
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+  z-index: 1000;
+  background: #fff;
+  padding: 10px;
+}
+
     .sidebar.collapsed div:first-child,
+    .sidebar.collapsed div:nth-child(2),
     .sidebar.collapsed .list-button {
-      display: none;
+      display:none
     }
 
     .sidebar.collapsed {
       padding: 10px 10px 10px 0;
       justify-content: flex-end;
       background: transparent;
+      width: 5%
     }
     #toggleTopBar button {
       align-self: flex-start;
@@ -82,7 +95,7 @@
       align-items: flex-end;
     }
     .search-bar {
-      width: 100px;
+      width: 80%;
       padding: 5px;
       margin: 0 0 10px 20px;
      display: inline-block
@@ -173,17 +186,17 @@
 }
 */
 
-    .workspace {
-      border: 2px dashed #999;
-      aspect-ratio: 33 / 25;
-      width:100%;
-      background: #31302e;
-      position: relative;
-      overflow: hidden;
-      height:auto;
-      user-select: none;
-      position: sticky;
-    }
+.workspace {
+  border: 2px dashed #999;
+  aspect-ratio: 33 / 25;
+  width: 100%;
+  background: #31302e;
+  position: relative;
+  overflow: hidden;
+  height: auto;
+  user-select: none;
+}
+
     .workspace.fullscreen {
       position: fixed;
       top: 0;
