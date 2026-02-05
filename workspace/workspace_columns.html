@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Workspace</title>
+  <link rel="stylesheet" href="workspace_style.css">
+</head>
+<body>
+  <div class="container">
+ <div id="workspaceColumns" class="content-with-sidebars">
+  
+    <div id="workspaceContainer" class="sticky">
+      <h2>Workspace</h2>
+      <div class="workspace" id="workspace"></div>
+   </div>
+     <div id="sidebar" class="sticky">
+      <div>
+        <div class="right-controls">
+          <button id="toggleTopBar">Collapse sidebar</button>
+      </div>
+      <div class="options">
+        <h2>Filter by Color</h2>
+        <div class="filters" id="filters"></div>
+      </div>
+      <div class="options">
+        <h2>Search Titles</h2>
+        <input id="search" placeholder="Search titles..." class="search-bar">
+      </div>
+      <div class="view-bar">
+          <button id="viewList">View Workspace as List</button>
+          <button id="workspaceFullscreenBtn">View Workspace Full Screen</button>
+          <button id="instructionsBtn">Instructions</button>
+      </div>
+      </div>
+      
+    </div>
+    <div id="gridContainer">
+      <div class="image-grid" id="imageGrid"></div>
+    </div>
+  </div>>
+    <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <h3>Workspace Items</h3>
+      <table id="workspaceTable" style="width:100%;">
+        <thead><tr><th>Thumbnail</th><th>Title</th><th>ID</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button id="downloadCSV" style="margin-top: 10px; padding: 5px 10px;">Download CSV</button>
+      <button id="closeModal" style="margin-top: 10px; padding: 5px 10px;">Close</button>
+    </div>
+  </div>
+
+  <div id="instructionsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <div id="instructionsText"></div>
+      <button id="closeInstructionsModal" style="margin-top:10px;">Close</button>
+    </div>
+  </div>
+
+  <div id="imageModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1001;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <img id="modalImg" style="max-width:100%; height:auto; display:block; margin-bottom:10px;">
+      <div id="modalColors"></div>
+      <button id="closeImageModal" style="margin-top:10px;">Close</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    const filtersDiv = document.getElementById('filters');
+    const searchInput = document.getElementById('search');
+    const imageGrid = document.getElementById('imageGrid');
+    const workspace = document.getElementById('workspace');
+    let data = [];
+    let filter = 'all';
+    let searchTerm = '';
+    let workspaceItems = [];
+    let isPanning = false;
+    let panStartX, panStartY, panLastX, panLastY;
+
+    const viewListBtn = document.getElementById('viewList');
+    const instructionsBtn = document.getElementById('instructionsBtn');
+    const modal = document.getElementById('modal');
+    const instructionsModal = document.getElementById('instructionsModal');
+    const closeModalBtn = document.getElementById('closeModal');
+    const downloadCSVBtn = document.getElementById('downloadCSV');
+    const toggleTopBarBtn = document.getElementById('toggleTopBar');
+    const workspaceFullscreenBtn = document.getElementById('workspaceFullscreenBtn');
+
+    const imageModal = document.getElementById('imageModal');
+    const closeImageModalBtn = document.getElementById('closeImageModal');
+    const closeInstructionsModal = document.getElementById('closeInstructionsModal');
+
+    searchInput.addEventListener('input', (e) => {
+      searchTerm = e.target.value.toLowerCase();
+      renderImages();
+    });
+
+    viewListBtn.addEventListener('click', () => {
+      renderWorkspaceTable();
+      modal.style.display = 'block';
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    toggleTopBarBtn.addEventListener('click', () => {
+      const topBar = document.querySelector('.top-bar');
+      topBar.classList.toggle('collapsed');
+      toggleTopBarBtn.textContent = topBar.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+    });
+
+    downloadCSVBtn.addEventListener('click', () => {
+      downloadWorkspaceCSV();
+    });
+
+    workspaceFullscreenBtn.addEventListener('click', () => {
+      const ws = document.getElementById('workspace');
+      const rect = ws.getBoundingClientRect();
+      const cards = ws.querySelectorAll('.workspace-card');
+      cards.forEach(card => {
+        const currentLeft = parseFloat(card.style.left || 0);
+        const currentTop = parseFloat(card.style.top || 0);
+        card.style.left = (currentLeft + rect.left) + 'px';
+        card.style.top = (currentTop + rect.top) + 'px';
+      });
+      ws.classList.add('fullscreen');
+      document.querySelector('.top-bar').style.display = 'none';
+      document.querySelector('.image-grid').style.display = 'none';
+      document.querySelector('#workspaceContainer h2').style.display = 'none';
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'X';
+      closeBtn.style.position = 'absolute';
+      closeBtn.style.top = '10px';
+      closeBtn.style.right = '10px';
+      closeBtn.style.zIndex = '10001';
+      closeBtn.style.padding = '5px 10px';
+      closeBtn.style.background = '#ccc';
+      closeBtn.style.border = '1px solid #000';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.onclick = () => {
+        cards.forEach(card => {
+          const currentLeft = parseFloat(card.style.left || 0);
+          const currentTop = parseFloat(card.style.top || 0);
+          card.style.left = (currentLeft - rect.left) + 'px';
+          card.style.top = (currentTop - rect.top) + 'px';
+        });
+        ws.classList.remove('fullscreen');
+        document.querySelector('.top-bar').style.display = '';
+        document.querySelector('.image-grid').style.display = '';
+        document.querySelector('#workspaceContainer h2').style.display = '';
+        closeBtn.remove();
+      };
+      ws.appendChild(closeBtn);
+    });
+
+    closeImageModalBtn.addEventListener('click', () => {
+      imageModal.style.display = 'none';
+    });
+
+    instructionsBtn.addEventListener('click', () => {
+      renderInstructions();
+      instructionsModal.style.display = 'block';
+    });
+
+    closeInstructionsModal.addEventListener('click', () => {
+      instructionsModal.style.display = 'none';
+    });
+
+    function renderWorkspaceTable() {
+      const tbody = document.querySelector('#workspaceTable tbody');
+      tbody.innerHTML = '';
+      workspaceItems.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><img src="${item.url}" style="width:50px; height:50px; object-fit:cover;"></td><td>${item.name}</td><td>${item.id}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderInstructions() {
+      const div = document.querySelector('#instructionsText');
+      div.innerHTML = `
+        <h3>Instructions</h3>
+        <p>Use the color filters and search bar to find images by their dominant colors and titles.</p>
+        <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
+        <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
+        <p>You can pan the workspace by clicking and dragging on empty space.</p>
+        <span class="highlight">View Workspace Full Screen"</span> Expand the workspace to full screen for easier arrangement of images.</p>
+        <span class="highlight">View Workspace as List</span>: See a tabular view of all images currently in the workspace, with an option to download the list as a CSV file.</p>
+      `;
+    }
+
+    function downloadWorkspaceCSV() {
+      let csv = 'Title,ID,URL\n';
+      workspaceItems.forEach(item => {
+        csv += `"${item.name}","${item.id}","${item.url}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'workspace_items.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // helper to normalize names
+    function normName(s){ return (s||'').toString().toLowerCase().trim(); }
+
+    async function loadCSV() {
+      const response = await fetch('../data/color_names.csv');
+      const csvText = await response.text();
+      const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
+      // parsed.data contains rows as arrays. Group by image_url (column 0)
+      const byImage = {};
+      parsed.data.slice(1).forEach(row => {  // skip header
+        const r = row;
+        const img = (r[0] || '').toString().replace(/^"|"$/g,'');
+        if(!img) return;
+        if(!byImage[img]) byImage[img] = { image_url: img, id: r[1] || '', w_cm: r[2] || '', title: r[7] || '', raw: [] };
+        byImage[img].raw.push({ idx: r[3], color: r[4], proportion: r[5], color_name: r[6], title: r[7] });
+      });
+      data = Object.keys(byImage).map((imgUrl, idx) => {
+        const group = byImage[imgUrl];
+        // sort by idx field if present to keep top colors first
+        group.raw.sort((a,b)=> (parseInt(a.idx)||0) - (parseInt(b.idx)||0));
+        const colors = group.raw.map(rr=>({
+          hex: (rr.color||'').toString(),
+          proportion: parseFloat(rr.proportion) || 0,
+          color_name: normName(rr.color_name || rr.name || '')
+        })).filter(c=>c.hex);
+        return {
+          id: group.id || `img-${idx}`,
+          name: group.title || `Image ${idx+1}`,
+          width: parseFloat(group.w_cm) || 3,
+          url: "../images/" + group.image_url,
+          colors,
+          raw: group.raw
+        };
+      });
+      renderFilters();
+      renderImages();
+    }
+
+    function renderFilters() {
+      // gather unique color_name values from colors arrays
+      const names = new Set();
+      data.forEach(d=> d.colors.forEach(c=> { if(c.color_name) names.add(c.color_name); }));
+      const colors = ['all', ...Array.from(names).sort()];
+      filtersDiv.innerHTML = '';
+      colors.forEach(c => {
+        const btn = document.createElement('button');
+        btn.textContent = c;
+        btn.className = c === filter ? 'active' : '';
+        btn.onclick = () => {
+          filter = c;
+          renderFilters();
+          renderImages();
+        };
+        filtersDiv.appendChild(btn);
+      });
+    }
+
+    function renderImages() {
+      let images = data.filter(i => {
+        const matchesColor = filter === 'all' || i.colors.some(c => c.color_name === filter);
+        const matchesSearch = !searchTerm || i.name.toLowerCase().includes(searchTerm);
+        return matchesColor && matchesSearch;
+      });
+      // Sort by proportion of matching color, descending
+      if (filter !== 'all') {
+        images = images.sort((a, b) => {
+          const getMaxProp = (img) => Math.max(...img.colors.filter(c => c.color_name === filter).map(c => c.proportion));
+          return getMaxProp(b) - getMaxProp(a);
+        });
+      }
+      imageGrid.innerHTML = '';
+      images.forEach(img => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.draggable = true;
+        card.ondragstart = (e) => e.dataTransfer.setData('id', img.id);
+        card.onclick = () => addToWorkspace(img, 0, 0);
+        // show a small swatch row for the top colors
+        const imgEl = document.createElement('img');
+        imgEl.src = img.url;
+        imgEl.alt = img.name;
+        card.appendChild(imgEl);
+        
+        const swatchesDiv = document.createElement('div');
+        img.colors.slice(0,5).forEach(c => {
+          const span = document.createElement('span');
+          span.title = c.color_name;
+          span.style.display = 'inline-block';
+          span.style.width = '14px';
+          span.style.height = '14px';
+          span.style.background = c.hex;
+          span.style.marginRight = '4px';
+          span.style.border = '1px solid #fff';
+          swatchesDiv.appendChild(span);
+        });
+        card.appendChild(swatchesDiv);
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.style.marginTop = '6px';
+        nameDiv.style.cursor = 'pointer';
+        nameDiv.textContent = img.name;
+        nameDiv.onclick = (e) => { e.stopPropagation(); openModal(img.id); };
+        card.appendChild(nameDiv);
+        
+        imageGrid.appendChild(card);
+      });
+    }
+
+    function openModal(id) {
+      const img = data.find(i => i.id === id);
+      document.getElementById('modalImg').src = img.url;
+      const colorsDiv = document.getElementById('modalColors');
+      colorsDiv.innerHTML = '';
+      img.colors.forEach(c => {
+        const div = document.createElement('div');
+        div.style.marginBottom = '5px';
+        div.innerHTML = `<span style="display:inline-block;width:20px;height:20px;background:${c.hex};border:1px solid #000;margin-right:10px;vertical-align:middle;"></span> <strong>${c.hex}</strong> - ${c.color_name} (${Math.round(c.proportion*100)}%)`;
+        colorsDiv.appendChild(div);
+      });
+      imageModal.style.display = 'block';
+    }
+
+    function addToWorkspace(img, x = 50, y = 50) {
+      if ([...workspace.children].some(el => el.dataset.id === img.id)) return;
+      const div = document.createElement('div');
+      div.className = 'workspace-card';
+      div.dataset.id = img.id;
+      div.style.position = 'absolute';
+      div.style.left = x + 'px';
+      div.style.top = y + 'px';
+      div.innerHTML = `<img src="${img.url}" alt="${img.name}" style="width:${img.width * 5}px">`;
+
+      let offsetX, offsetY, isDragging = false;
+
+      div.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+        div.style.zIndex = 1000;
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const rect = workspace.getBoundingClientRect();
+        div.style.left = e.clientX - rect.left - offsetX + 'px';
+        div.style.top = e.clientY - rect.top - offsetY + 'px';
+      });
+
+      document.addEventListener('mouseup', (e) => {
+        if (isDragging) {
+          const rect = workspace.getBoundingClientRect();
+          if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+            workspace.removeChild(div);
+            const index = workspaceItems.findIndex(item => item.id === div.dataset.id);
+            if (index > -1) {
+              workspaceItems.splice(index, 1);
+            }
+          }
+          isDragging = false;
+          div.style.zIndex = '';
+        }
+      });
+
+      workspace.appendChild(div);
+      workspaceItems.push({ id: img.id, name: img.name, url: img.url });
+    }
+
+    workspace.addEventListener('dragover', (e) => e.preventDefault());
+    workspace.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData('id');
+      const img = data.find(i => i.id === id);
+      if (img) {
+        const rect = workspace.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        addToWorkspace(img, x, y);
+      }
+    });
+
+    workspace.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.workspace-card')) return;
+      isPanning = true;
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+      panLastX = e.clientX;
+      panLastY = e.clientY;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      const deltaX = e.clientX - panLastX;
+      const deltaY = e.clientY - panLastY;
+      const cards = workspace.querySelectorAll('.workspace-card');
+      cards.forEach(card => {
+        const currentLeft = parseFloat(card.style.left || 0);
+        const currentTop = parseFloat(card.style.top || 0);
+        card.style.left = (currentLeft + deltaX) + 'px';
+        card.style.top = (currentTop + deltaY) + 'px';
+      });
+      panLastX = e.clientX;
+      panLastY = e.clientY;
+    });
+
+    document.addEventListener('mouseup', () => {
+      isPanning = false;
+    });
+
+    loadCSV();
+  </script>
+
+
+</body>
+</html>
