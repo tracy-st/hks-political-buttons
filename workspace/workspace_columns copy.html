@@ -25,12 +25,10 @@
       </div>
       <div class="sidebar">
           <div class="options">
-            <h2>Filter by Color</h2>
+            <h2>Filter by Color (primary)</h2>
             <div class="filters" id="filters"></div>
             <div class="color-filters">
               <label>Primary Color: <input type="color" id="colorPicker" value="#ff0000"></label><br>
-              <button id="toggleSecondColor" style="margin-top:6px;">Add Second Color</button><br>
-              <input type="color" id="colorPicker2" value="#0000ff" style="display:none; margin-top:6px;"><br>
               <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
               <label style="display:block; margin-top:6px;">Color Name: <input id="colorNameFilter" placeholder="e.g. red"></label><br>
               <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" placeholder="#rrggbb"></label><br>
@@ -204,18 +202,13 @@
     // color filter controls hook
     const applyColorBtn = document.getElementById('applyColorFilter');
     if(applyColorBtn) applyColorBtn.addEventListener('click', applyFilters);
-    const toggleSecondBtn = document.getElementById('toggleSecondColor');
-    if(toggleSecondBtn) toggleSecondBtn.addEventListener('click', toggleSecondColor);
     const clearFiltersBtn = document.getElementById('clearFilters');
     if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{
       document.getElementById('colorPicker').value = '#ff0000';
-      document.getElementById('colorPicker2').value = '#0000ff';
       document.getElementById('colorNameFilter').value = '';
       document.getElementById('searchHex').value = '';
       const tol = document.getElementById('tolerance');
       if(tol){ tol.value = 60; document.getElementById('tolValue').textContent = 60; }
-      const cp2 = document.getElementById('colorPicker2');
-      if(cp2){ cp2.style.display = 'none'; document.getElementById('toggleSecondColor').textContent = 'Add Second Color'; }
       applyFilters();
     });
 
@@ -233,12 +226,12 @@
       const div = document.querySelector('#instructionsText');
       div.innerHTML = `
         <h3>Instructions</h3>
-        <p>Use the color filters and search bar to find images by their dominant colors and titles.</p>
+        <p>Use the primary color picker and search bar to find images by dominant color and titles.</p>
         <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
         <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
         <p>You can pan the workspace by clicking and dragging on empty space.</p>
-        <span class="highlight">View Workspace Full Screen"</span> Expand the workspace to full screen for easier arrangement of images.</p>
-        <span class="highlight">View Workspace as List</span>: See a tabular view of all images currently in the workspace, with an option to download the list as a CSV file.</p>
+        <span class="highlight">View Workspace Full Screen</span> Expand the workspace to full screen for easier arrangement of images.
+        <span class="highlight">View Workspace as List</span>: See a tabular view of all images currently in the workspace, with an option to download the list as a CSV file.
       `;
     }
 
@@ -360,28 +353,16 @@
       return 'pink';
     }
 
-    function toggleSecondColor(){
-      const picker2 = document.getElementById('colorPicker2');
-      const btn = document.getElementById('toggleSecondColor');
-      if(picker2.style.display === 'none'){
-        picker2.style.display = 'inline';
-        btn.textContent = 'Remove Second Color';
-      } else {
-        picker2.style.display = 'none';
-        btn.textContent = 'Add Second Color';
-      }
-    }
+    // second-color picker removed
 
     // apply filters and store active filter state; renderImages reads window._colorFilter
     function applyFilters(){
       const clr = normalizeHex(document.getElementById('colorPicker').value || '');
       const tol = parseInt(document.getElementById('tolerance').value || 60);
-      const cp2 = document.getElementById('colorPicker2');
-      const clr2 = cp2 && cp2.style.display !== 'none' ? normalizeHex(cp2.value || '') : '';
       const colorName = (document.getElementById('colorNameFilter').value || '').toLowerCase();
       const searchHex = normalizeHex(document.getElementById('searchHex').value || '');
 
-      window._colorFilter = { clr, clr2, tol, colorName, searchHex };
+      window._colorFilter = { clr, tol, colorName, searchHex };
       renderImages();
     }
 
@@ -407,15 +388,7 @@
           });
           return best > 0;
         }
-        // two color pickers -> require both
-        if(cf.clr && cf.clr2){
-          let best1=0, best2=0;
-          i.colors.forEach(c=>{
-            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr)) <= cf.tol){ if(c.proportion>best1) best1=c.proportion; }
-            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr2)) <= cf.tol){ if(c.proportion>best2) best2=c.proportion; }
-          });
-          return best1>0 && best2>0;
-        }
+        // two-color filter removed; only single primary color supported
         // single color picker
         if(cf.clr){
           let best = 0;
@@ -449,17 +422,9 @@
               img.colors.forEach(c=>{ if(colorDistance(hexToRgb(c.hex), hexToRgb(cf2.searchHex))<=24) best = Math.max(best, c.proportion); });
               return best;
             }
-            if(cf2.clr && !cf2.clr2){
+            if(cf2.clr){
               img.colors.forEach(c=>{ if(colorDistance(hexToRgb(c.hex), hexToRgb(cf2.clr))<=cf2.tol) best = Math.max(best, c.proportion); });
               return best;
-            }
-            if(cf2.clr && cf2.clr2){
-              let b1=0,b2=0;
-              img.colors.forEach(c=>{
-                if(colorDistance(hexToRgb(c.hex), hexToRgb(cf2.clr))<=cf2.tol) b1 = Math.max(b1, c.proportion);
-                if(colorDistance(hexToRgb(c.hex), hexToRgb(cf2.clr2))<=cf2.tol) b2 = Math.max(b2, c.proportion);
-              });
-              return b1+b2;
             }
             if(cf2.colorName){
               img.colors.forEach(c=>{ if(colorNameFromHex(c.hex) === cf2.colorName) best = Math.max(best, c.proportion); });
