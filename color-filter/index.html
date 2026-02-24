@@ -25,10 +25,15 @@
       </div>
       <div class="control-row" id="colorControls">
         <label>Filter by Color: <input id="colorPicker" type="color" value="#ff0000"></label>
-        <label>Tolerance: <input id="tolerance" type="range" min="0" max="255" value="100"></label>
-        <span id="tolValue">100</span>
+        <div id="colorPreview" style="width: 60px; height: 60px; border: 1px solid #ccc; display: inline-block; margin-left: 10px; background: #ff0000;"></div>
+        <label>Tolerance: <input id="tolerance" type="range" min="0" max="100" value="20"></label>
+        <span id="tolValue">20</span>
         <label>Add Second Color: <input id="colorPicker2" type="color" value="#0000ff" style="display:none;"></label>
         <button id="toggleSecondColor">Add Second Color</button>
+        <label>Dominance: <select id="dominanceFilter"><option value="any">Any Color</option><option value="primary">Primary Color</option><option value="secondary">Secondary Color</option></select></label>
+        <label>Exclude Color: <input id="excludeColor" type="color" value="#ffffff"></label>
+        <label>Exclude Tolerance: <input id="excludeTolerance" type="range" min="0" max="100" value="10"></label>
+        <span id="excludeTolValue">10</span>
       </div>
       <div class="control-row" id="nameControls" style="display:none;">
         <label>Color name: 

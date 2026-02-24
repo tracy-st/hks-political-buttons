@@ -12,7 +12,7 @@
     <h1>Political Buttons Color Filter</h1>
     <div class="filters">
         <div>
-            <label>Search: <input type="text" id="searchInput" placeholder="Search titles and filenames..."></label>
+            <label>Search: <input type="text" id="searchInput" placeholder="Search titles..."></label>
         </div>
         <div>
             <label>Pick Color: <input type="color" id="colorPicker" value="#ffffff"></label>
@@ -20,6 +20,9 @@
         </div>
         <div>
             <label>At least <input type="number" id="minPercent" min="0" max="100" value="10"> % of this color</label>
+        </div>
+        <div>
+            <label>At most <input type="number" id="maxPercent" min="0" max="100" value="100"> % of this color</label>
         </div>
         <div>
             <label>Tolerance: <input type="range" id="tolerance" min="0" max="100" value="40"> <span id="tolValue">40</span></label>

@@ -200,17 +200,19 @@
   border: 2px dashed #999;
   aspect-ratio: 33 / 25;
   width: 100%;
-  background: #31302e;
+  background: #716f6c;
   position: relative;
   overflow: hidden;
-  height: auto;font
+  height: auto;
   user-select: none;
 }
 
 .workspace span {
-    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
-    font-size: 80vh;
-    color: darkgray
+     font-family: "Public Sans", sans-serif;
+  font-weight: 900;
+  font-style: normal;
+    font-size: 60vh;
+    color: #31302e;
 
 }
 
@@ -231,7 +233,7 @@
       min-width: 50px;
       min-height: 50px;
       height: auto;
-      max-height: 150px;
+      max-height: 50px;
       object-fit: contain;
       user-select: none;
       pointer-events: none;

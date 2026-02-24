@@ -11,9 +11,9 @@
     .spectrum{height:18px;flex:1;border-radius:4px;background:linear-gradient(90deg, red 0deg, orange 45deg, yellow 90deg, green 135deg, cyan 180deg, blue 225deg, purple 270deg, magenta 315deg, red 360deg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
     .controls{margin-bottom:12px}
     .hist-wrap{display:flex;gap:6px;overflow:auto;padding:8px 4px;border-radius:6px;background:#fff;border:1px solid #e6e6e6}
-    .bin{width:80px;min-width:60px;border-radius:4px;padding:6px;background:#fff;border:1px solid #eee;display:flex;flex-direction:column;align-items:center}
+    .bin{height:auto;min-width:60px;border-radius:4px;padding:6px;background:#fff;border:1px solid #eee;display:flex;align-items:center}
     .bin .label{font-size:12px;color:#666;margin-bottom:6px;text-align:center}
-    .thumbs{display:flex;flex-direction:column;gap:6px;align-items:center;max-height:100%;overflow:auto;width:100%}
+    .thumbs{display:flex;flex-direction:column;gap:6px;align-items:center;max-height:360px;overflow:auto;width:100%}
     .thumb{width:56px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #ddd;cursor:pointer}
     .count{font-size:12px;color:#333;margin-top:6px}
     .neutral-bin{background:#f7f7f7}
@@ -45,10 +45,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
-    // Reads data/pylette_metadata.csv, groups rows by image, picks dominant color by proportion,
+    // Reads data/color_names.csv, groups rows by image, picks dominant color by proportion,
     // computes hue (0..360) from hex, bins images by hue and renders thumbnails in each bin.
 
-    const CSV = '../data/pylette_metadata.csv';
+    const CSV = '../data/color_names.csv';
     const histEl = document.getElementById('hist');
     const metaEl = document.getElementById('meta');
     const binSelect = document.getElementById('binCount');
@@ -69,23 +69,14 @@
 
   function colorDistance(a,b){ if(!a||!b) return Infinity; const dr=a.r-b.r, dg=a.g-b.g, db=a.b-b.b; return Math.sqrt(dr*dr+dg*dg+db*db); }
 
-  function isWhite(color){
-    const hex = normalizeHex(color.hex || '');
-    const rgb = hexToRgb(hex);
-    if(!rgb) return false;
-    return rgb.r > 220 && rgb.g > 220 && rgb.b > 220;
-  }
-
     // Build image-level objects: { image_url, id, topColor: {hex, proportion, color_name}, colors: [...] }
     function groupImages(rows){
       const by = {};
       rows.forEach(r=>{
-        const fullUrl = (r.image_url || '').toString().replace(/^"|"$/g,'');
-        if(!fullUrl) return;
-        const filename = fullUrl.split('/').pop(); // extract filename from URL
-        const img = filename; // use filename as key
-        if(!by[img]) by[img] = { image_url: filename, id: r.filename || img, w_cm: r.w_cm || '', name: r.name || '', office: r.office || '', party: r.party || '', date_int: r.date_int || '', colors: [] };
-        by[img].colors.push({ hex: normalizeHex(r.hex||''), proportion: parseFloat(r.frequency) || 0, color_name: '' });
+        const img = (r.image_url || r.url || '').toString().replace(/^"|"$/g,'');
+        if(!img) return;
+        if(!by[img]) by[img] = { image_url: img, id: r.id || img, w_cm: r.w_cm || '', colors: [] };
+        by[img].colors.push({ hex: normalizeHex(r.color||''), proportion: parseFloat(r.proportion) || 0, color_name: (r.color_name||'').toString().toLowerCase().trim() });
       });
       return Object.keys(by).map(k=>{
         const g = by[k];
@@ -112,14 +103,13 @@
             // use second-best color
             useColor = img.colors[1];
           }
-          img.sortColor = useColor;
 
           const hex = normalizeHex(useColor.hex || '');
           const rgb = hexToRgb(hex);
           if(!rgb){ img.hue = null; return; }
           const hsl = rgbToHsl(rgb.r,rgb.g,rgb.b);
-          // consider neutral if lightness < .12 (black/dark gray backgrounds)
-          if(hsl.l < 0.12){ img.hue = null; }
+          // consider neutral if saturation < .08 or lightness < .05 or > .95
+          if(hsl.s < 0.08 || hsl.l < 0.05 || hsl.l > 0.95){ img.hue = null; }
           else img.hue = Math.round(hsl.h || 0);
         });
 
@@ -128,23 +118,18 @@
         const bins = Array.from({length:binCount},(_,i)=>({idx:i,items:[] }));
         const neutralGroups = { white: [], black: [], neutral: [] };
         imgs.forEach(img=>{
-          const topIsWhite = img.colors.length > 0 && isWhite(img.colors[0]);
-          const secondIsWhite = img.colors.length > 1 && isWhite(img.colors[1]);
-          if(topIsWhite || secondIsWhite){
-            neutralGroups.white.push(img);
-          }
-          else if(img.hue === null || img.hue === undefined){
-            // check for black/dark gray
+          if(img.hue === null || img.hue === undefined){
+            // classify into white/black/neutral by lightness
+            // compute HSL for the color we used (top or fallback)
             const hex = normalizeHex((img.topColor && img.topColor.hex) || '');
             const rgb = hexToRgb(hex);
             let hsl = null;
-            if(rgb) hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-            if(!hsl || hsl.l <= 0.12){
-              neutralGroups.black.push(img);
-            }
-            else {
-              neutralGroups.neutral.push(img);
-            }
+            if(rgb) hsl = rgbToHsl(rgb.r,rgb.g,rgb.b);
+            // fallback: if hsl not available, treat as neutral
+            if(!hsl){ neutralGroups.neutral.push(img); }
+            else if(hsl.l <= 0.12){ neutralGroups.black.push(img); }
+            else if(hsl.l >= 0.92){ neutralGroups.white.push(img); }
+            else { neutralGroups.neutral.push(img); }
           }
           else{
             const b = Math.floor(img.hue / (360/binCount)) % binCount;
@@ -168,7 +153,7 @@
         binEl.appendChild(lbl);
         const thumbs = document.createElement('div'); thumbs.className='thumbs';
         bin.items.forEach(it=>{
-          const img = document.createElement('img'); img.className='thumb'; img.src = "../images/" + it.image_url; img.title = `${it.topColor.color_name || ''} ${it.topColor.hex || ''} ${Math.round((it.topColor.proportion||0)*100)}%`;
+          const img = document.createElement('img'); img.className='thumb'; img.src = it.image_url; img.title = `${it.topColor.color_name || ''} ${it.topColor.hex || ''} ${Math.round((it.topColor.proportion||0)*100)}%`;
           img.addEventListener('click', ()=> openModal(it));
           thumbs.appendChild(img);
         });
@@ -182,7 +167,7 @@
         const nl = document.createElement('div'); nl.className='label'; nl.textContent = label; nb.appendChild(nl);
         const nthumbs = document.createElement('div'); nthumbs.className='thumbs';
         (items || []).forEach(it=>{
-          const img = document.createElement('img'); img.className='thumb'; img.src = "../images/" + it.image_url; img.title = `${it.topColor.color_name || ''} ${it.topColor.hex || ''}`; img.addEventListener('click', ()=> openModal(it)); nthumbs.appendChild(img);
+          const img = document.createElement('img'); img.className='thumb'; img.src = it.image_url; img.title = `${it.topColor.color_name || ''} ${it.topColor.hex || ''}`; img.addEventListener('click', ()=> openModal(it)); nthumbs.appendChild(img);
         });
         nb.appendChild(nthumbs);
         if(showCount){ const cnt = document.createElement('div'); cnt.className='count'; cnt.textContent = (items||[]).length; nb.appendChild(cnt); }
@@ -196,19 +181,9 @@
 
     function openModal(item){
       const body = document.getElementById('modalBody'); body.innerHTML = '';
-      const img = document.createElement('img'); img.src = "../images/" + item.image_url; body.appendChild(img);
-      const p = document.createElement('div'); p.style.marginTop='8px'; p.textContent = 'Top color: ';
-      const topSquare = document.createElement('span'); topSquare.style.display='inline-block'; topSquare.style.width='12px'; topSquare.style.height='12px'; topSquare.style.backgroundColor = item.topColor.hex; topSquare.style.border='1px solid #000'; topSquare.style.marginRight='4px'; topSquare.style.verticalAlign='middle';
-      p.appendChild(topSquare);
-      p.appendChild(document.createTextNode(`${item.topColor.color_name || ''} ${item.topColor.hex || ''} — ${Math.round((item.topColor.proportion||0)*100)}%`));
+      const img = document.createElement('img'); img.src = item.image_url; body.appendChild(img);
+      const p = document.createElement('div'); p.style.marginTop='8px'; p.textContent = `Top color: ${item.topColor.color_name || ''} ${item.topColor.hex || ''} — ${Math.round((item.topColor.proportion||0)*100)}%`;
       body.appendChild(p);
-      const sortP = document.createElement('div'); sortP.style.marginTop='4px'; sortP.textContent = 'Sort color: ';
-      const square = document.createElement('span'); square.style.display='inline-block'; square.style.width='12px'; square.style.height='12px'; square.style.backgroundColor = item.sortColor.hex; square.style.border='1px solid #000'; square.style.marginRight='4px'; square.style.verticalAlign='middle';
-      sortP.appendChild(square);
-      sortP.appendChild(document.createTextNode(`${item.sortColor.hex || ''} — ${Math.round((item.sortColor.proportion||0)*100)}%`));
-      body.appendChild(sortP);
-      const info = document.createElement('div'); info.style.marginTop='4px'; info.textContent = `${item.name} - ${item.office} (${item.party}) ${item.date_int}`;
-      body.appendChild(info);
       document.getElementById('modal').style.display='flex';
     }
 

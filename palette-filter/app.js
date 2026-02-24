@@ -58,6 +58,7 @@ document.getElementById('hexInput').addEventListener('input', function() {
     filter();
 });
 document.getElementById('minPercent').addEventListener('input', filter);
+document.getElementById('maxPercent').addEventListener('input', filter);
 document.getElementById('tolerance').addEventListener('input', filter);
 document.getElementById('clearBtn').addEventListener('click', clearFilters);
 
@@ -82,6 +83,7 @@ function filter() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const pickedColor = document.getElementById('colorPicker').value;
     const minPercent = parseFloat(document.getElementById('minPercent').value) / 100;
+    const maxPercent = parseFloat(document.getElementById('maxPercent').value) / 100;
     const tolerance = parseInt(document.getElementById('tolerance').value);
 
     const resultsDiv = document.getElementById('results');
@@ -99,18 +101,31 @@ function filter() {
         
         if (!matchesSearch) return;
         
-        let colorsToCheck = item.colors;
+        let colorsToCheck = [...item.colors].sort((a, b) => b.frequency - a.frequency);
 
         // Check if has the picked color with min percent
         // Skip color filtering if white is selected (default "show all" mode)
         let hasPicked = true;
         if (pickedColor !== '#ffffff') {
             hasPicked = false;
-            for (const color of colorsToCheck) {
-                const dist = chroma.distance(pickedColor, color.hex);
-                if (dist <= tolerance && color.frequency >= minPercent) {
-                    hasPicked = true;
-                    break;
+            const isDark = chroma(pickedColor).hsl()[2] < 0.2;
+            if (isDark) {
+                // For dark colors, require it to be the second most present color
+                if (colorsToCheck.length > 1) {
+                    const secondColor = colorsToCheck[1];
+                    const dist = chroma.distance(pickedColor, secondColor.hex);
+                    if (dist <= tolerance && secondColor.frequency >= minPercent && secondColor.frequency <= maxPercent) {
+                        hasPicked = true;
+                    }
+                }
+            } else {
+                // For other colors, check if any color matches
+                for (const color of colorsToCheck) {
+                    const dist = chroma.distance(pickedColor, color.hex);
+                    if (dist <= tolerance && color.frequency >= minPercent && color.frequency <= maxPercent) {
+                        hasPicked = true;
+                        break;
+                    }
                 }
             }
         }
@@ -160,6 +175,7 @@ function clearFilters() {
     document.getElementById('colorPicker').value = '#ffffff';
     document.getElementById('hexInput').value = '#ffffff';
     document.getElementById('minPercent').value = 10;
+    document.getElementById('maxPercent').value = 100;
     document.getElementById('tolerance').value = 60;
     document.getElementById('tolValue').textContent = 60;
     

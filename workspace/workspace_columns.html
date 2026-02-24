@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Image Workspace</title>
   <link rel="stylesheet" href="workspace_style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="container">
@@ -119,45 +122,53 @@
     });
 
     workspaceFullscreenBtn.addEventListener('click', () => {
-      const ws = document.getElementById('workspace');
-      const rect = ws.getBoundingClientRect();
-      const cards = ws.querySelectorAll('.workspace-card');
-      cards.forEach(card => {
-        const currentLeft = parseFloat(card.style.left || 0);
-        const currentTop = parseFloat(card.style.top || 0);
-        card.style.left = (currentLeft + rect.left) + 'px';
-        card.style.top = (currentTop + rect.top) + 'px';
-      });
-      ws.classList.add('fullscreen');
-      document.querySelector('.top-bar').style.display = 'none';
-      document.querySelector('.image-grid').style.display = 'none';
-      document.querySelector('#workspaceContainer h2').style.display = 'none';
-      const closeBtn = document.createElement('button');
-      closeBtn.textContent = 'X';
-      closeBtn.style.position = 'absolute';
-      closeBtn.style.top = '10px';
-      closeBtn.style.right = '10px';
-      closeBtn.style.zIndex = '10001';
-      closeBtn.style.padding = '5px 10px';
-      closeBtn.style.background = '#ccc';
-      closeBtn.style.border = '1px solid #000';
-      closeBtn.style.cursor = 'pointer';
-      closeBtn.onclick = () => {
-        cards.forEach(card => {
-          const currentLeft = parseFloat(card.style.left || 0);
-          const currentTop = parseFloat(card.style.top || 0);
-          card.style.left = (currentLeft - rect.left) + 'px';
-          card.style.top = (currentTop - rect.top) + 'px';
-        });
-        ws.classList.remove('fullscreen');
-        document.querySelector('.top-bar').style.display = '';
-        document.querySelector('.image-grid').style.display = '';
-        document.querySelector('#workspaceContainer h2').style.display = '';
-        closeBtn.remove();
-      };
-      ws.appendChild(closeBtn);
-    });
+  const ws = document.getElementById('workspace');
+  const rect = ws.getBoundingClientRect();
+  const cards = ws.querySelectorAll('.workspace-card');
+  cards.forEach(card => {
+    const currentLeft = parseFloat(card.style.left || 0);
+    const currentTop = parseFloat(card.style.top || 0);
+    card.style.left = (currentLeft + rect.left) + 'px';
+    card.style.top = (currentTop + rect.top) + 'px';
+  });
+  ws.classList.add('fullscreen');
 
+  const topBar = document.querySelector('.top-bar');
+  if (topBar) topBar.style.display = 'none';
+  const imageGridEl = document.querySelector('.image-grid');
+  if (imageGridEl) imageGridEl.style.display = 'none';
+  const wsH2 = document.querySelector('#workspaceContainer h2');
+  if (wsH2) wsH2.style.display = 'none';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'X';
+  closeBtn.style.position = 'absolute';
+  closeBtn.style.top = '10px';
+  closeBtn.style.right = '10px';
+  closeBtn.style.zIndex = '10001';
+  closeBtn.style.padding = '5px 10px';
+  closeBtn.style.background = '#ccc';
+  closeBtn.style.border = '1px solid #000';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.onclick = () => {
+    cards.forEach(card => {
+      const currentLeft = parseFloat(card.style.left || 0);
+      const currentTop = parseFloat(card.style.top || 0);
+      card.style.left = (currentLeft - rect.left) + 'px';
+      card.style.top = (currentTop - rect.top) + 'px';
+    });
+    ws.classList.remove('fullscreen');
+
+    const topBar2 = document.querySelector('.top-bar');
+    if (topBar2) topBar2.style.display = '';
+    const imageGridEl2 = document.querySelector('.image-grid');
+    if (imageGridEl2) imageGridEl2.style.display = '';
+    const wsH2b = document.querySelector('#workspaceContainer h2');
+    if (wsH2b) wsH2b.style.display = '';
+    closeBtn.remove();
+  };
+  ws.appendChild(closeBtn);
+});
     closeImageModalBtn.addEventListener('click', () => {
       imageModal.style.display = 'none';
     });

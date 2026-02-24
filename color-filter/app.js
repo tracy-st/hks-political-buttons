@@ -10,7 +10,7 @@ let perPage = 60;
 // store last filter values for each mode
 let lastColor = '#ff0000';
 let lastColor2 = '#0000ff';
-let lastTolerance = 100;
+let lastTolerance = 20;
 let lastColorName = '';
 let lastHex = '';
 
@@ -24,8 +24,17 @@ function hookControls(){
     document.getElementById('tolValue').textContent = e.target.value;
     applyFilters();
   });
-  document.getElementById('colorPicker').addEventListener('input', applyFilters);
+  document.getElementById('colorPicker').addEventListener('input', (e) => {
+    document.getElementById('colorPreview').style.background = e.target.value;
+    applyFilters();
+  });
   document.getElementById('colorPicker2').addEventListener('input', applyFilters);
+  document.getElementById('excludeTolerance').addEventListener('input', (e) => {
+    document.getElementById('excludeTolValue').textContent = e.target.value;
+    applyFilters();
+  });
+  document.getElementById('dominanceFilter').addEventListener('change', applyFilters);
+  document.getElementById('excludeColor').addEventListener('input', applyFilters);
   document.getElementById('colorNameFilter').addEventListener('change', applyFilters);
   document.getElementById('searchHex').addEventListener('input', applyFilters);
   document.getElementById('toggleSecondColor').addEventListener('click', toggleSecondColor);
@@ -35,18 +44,23 @@ function hookControls(){
   });
   document.getElementById('clearFilters').addEventListener('click', ()=>{
     document.getElementById('colorPicker').value = '#ff0000';
+    document.getElementById('colorPreview').style.background = '#ff0000';
     document.getElementById('colorPicker2').value = '#0000ff';
     document.getElementById('colorNameFilter').value = '';
     document.getElementById('searchHex').value = '';
-    document.getElementById('tolerance').value = 100;
-    document.getElementById('tolValue').textContent = 100;
+    document.getElementById('tolerance').value = 20;
+    document.getElementById('tolValue').textContent = 20;
+    document.getElementById('excludeColor').value = '#ffffff';
+    document.getElementById('excludeTolerance').value = 10;
+    document.getElementById('excludeTolValue').textContent = 10;
+    document.getElementById('dominanceFilter').value = 'any';
     // hide second color if shown
     document.getElementById('colorPicker2').style.display = 'none';
     document.getElementById('toggleSecondColor').textContent = 'Add Second Color';
     // reset last values
     lastColor = '#ff0000';
     lastColor2 = '#0000ff';
-    lastTolerance = 100;
+    lastTolerance = 20;
     lastColorName = '';
     lastHex = '';
     applyFilters();
@@ -77,6 +91,7 @@ function switchFilterMode(){
   // set inputs to last values for this mode
   if(mode === 'color'){
     document.getElementById('colorPicker').value = lastColor;
+    document.getElementById('colorPreview').style.background = lastColor;
     document.getElementById('colorPicker2').value = lastColor2;
     document.getElementById('tolerance').value = lastTolerance;
     document.getElementById('tolValue').textContent = lastTolerance;
@@ -179,8 +194,11 @@ function renderGrid(){
 function applyFilters(){
   const mode = document.querySelector('input[name="filterMode"]:checked').value;
   const clr = normalizeHex(document.getElementById('colorPicker').value || '');
-  const tol = parseInt(document.getElementById('tolerance').value || 100);
+  const tol = parseInt(document.getElementById('tolerance').value || 20);
   const clr2 = normalizeHex((document.getElementById('colorPicker2') && document.getElementById('colorPicker2').value) || '');
+  const dominance = document.getElementById('dominanceFilter').value;
+  const excludeClr = normalizeHex(document.getElementById('excludeColor').value || '');
+  const excludeTol = parseInt(document.getElementById('excludeTolerance').value || 10);
   const colorName = document.getElementById('colorNameFilter').value || '';
   const searchHex = normalizeHex(document.getElementById('searchHex').value || '');
   // update last values
@@ -192,6 +210,17 @@ function applyFilters(){
     lastColorName = colorName;
   } else if(mode === 'hex'){
     lastHex = document.getElementById('searchHex').value;
+  }
+
+  function matchesColor(row, targetClr, tolerance, dom) {
+    if (!targetClr) return true;
+    const sortedColors = row.colors.slice().sort((a, b) => b.proportion - a.proportion);
+    if (dom === 'any') {
+      return sortedColors.some(c => colorDistance(hexToRgb(c.hex), hexToRgb(targetClr)) <= tolerance);
+    } else {
+      const index = dom === 'secondary' ? 1 : 0;
+      return sortedColors[index] && colorDistance(hexToRgb(sortedColors[index].hex), hexToRgb(targetClr)) <= tolerance;
+    }
   }
   // filter logic based on mode
   filtered = rows.map(r=>{
@@ -245,15 +274,14 @@ function applyFilters(){
     if(mode === 'color'){
       // color picker filter (single)
       if(clr && !clr2){
-        const found = r.colors && r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(clr)) <= tol);
-        if(!found) return false;
+        if(!matchesColor(r, clr, tol, dominance)) return false;
       }
       // both color pickers -> require both colors found (use same tol for both)
       if(clr && clr2){
-        const found1 = r.colors && r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(clr)) <= tol);
-        const found2 = r.colors && r.colors.some(c=> colorDistance(hexToRgb(c.hex), hexToRgb(clr2)) <= tol);
-        if(!found1 || !found2) return false;
+        if(!matchesColor(r, clr, tol, dominance) || !matchesColor(r, clr2, tol, dominance)) return false;
       }
+      // exclude color
+      if(excludeClr && matchesColor(r, excludeClr, excludeTol, 'any')) return false;
     }
     // color name filter
     else if(mode === 'name' && colorName){
@@ -268,10 +296,8 @@ function applyFilters(){
     return true;
   });
 
-  // If any of the filters that imply a target color are active, sort by matchScore desc so strongest matches come first.
-  if((mode === 'hex' && searchHex) || (mode === 'color' && clr) || (mode === 'name' && colorName)){
-    filtered.sort((a,b)=> (b.matchScore || 0) - (a.matchScore || 0));
-  }
+  // Sort by matchScore descending so strongest matches come first
+  filtered.sort((a,b)=> (b.matchScore || 0) - (a.matchScore || 0));
   page = 0;
   renderGrid();
 }
@@ -326,10 +352,44 @@ function hexToRgb(hex){
   return {r:(n>>16)&255, g:(n>>8)&255, b:n&255};
 }
 
-function colorDistance(a,b){
-  // simple RGB Euclidean distance
-  const dr = a.r-b.r, dg=a.g-b.g, db=a.b-b.b;
-  return Math.sqrt(dr*dr+dg*dg+db*db);
+function rgbToXyz(r, g, b) {
+  r = r / 255; g = g / 255; b = b / 255;
+  r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+  g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+  b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+  const x = r * 0.4124 + g * 0.3576 + b * 0.1805;
+  const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+  const z = r * 0.0193 + g * 0.1192 + b * 0.9505;
+  return {x, y, z};
+}
+
+function xyzToLab(x, y, z) {
+  const xn = 0.95047, yn = 1.0, zn = 1.08883;
+  x /= xn; y /= yn; z /= zn;
+  const f = (t) => t > 0.008856 ? Math.pow(t, 1/3) : 7.787 * t + 16/116;
+  const fx = f(x), fy = f(y), fz = f(z);
+  const l = 116 * fy - 16;
+  const a = 500 * (fx - fy);
+  const b = 200 * (fy - fz);
+  return {l, a, b};
+}
+
+function rgbToLab(r, g, b) {
+  const {x, y, z} = rgbToXyz(r, g, b);
+  return xyzToLab(x, y, z);
+}
+
+function labDistance(lab1, lab2) {
+  const dl = lab1.l - lab2.l;
+  const da = lab1.a - lab2.a;
+  const db = lab1.b - lab2.b;
+  return Math.sqrt(dl*dl + da*da + db*db);
+}
+
+function colorDistance(a, b) {
+  const lab1 = rgbToLab(a.r, a.g, a.b);
+  const lab2 = rgbToLab(b.r, b.g, b.b);
+  return labDistance(lab1, lab2);
 }
 
 function rgbToHsl(r,g,b){

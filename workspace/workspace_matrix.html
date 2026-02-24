@@ -150,7 +150,7 @@
           const cell = document.createElement('div'); cell.className='cell';
           const items = (grid[r] && grid[r][c]) || [];
           items.forEach(it=>{
-            const img = document.createElement('img'); img.className='thumb'; img.src = it.image_url; img.title = `${it.usedColor.color_name || ''} ${it.usedColor.hex || ''}`;
+            const img = document.createElement('img'); img.className='thumb'; img.src = "../images/" + it.image_url; img.title = `${it.usedColor.color_name || ''} ${it.usedColor.hex || ''}`;
             img.addEventListener('click', ()=> openModal(it));
             cell.appendChild(img);
           });
