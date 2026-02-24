@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Workspace</title>
+  <link rel="stylesheet" href="workspace_style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+ <div id="workspaceColumns" class="content-with-sidebars">
+  
+    <div id="workspaceContainer" class="sticky">
+      <h2>Workspace</h2>
+      <div class="workspace" id="workspace"> 
+         <span>HKS</span>
+      </div>
+   </div>
+     <div id="sidebar" class="sticky">
+       <div class="right-controls">
+          <button id="toggleTopBar">Collapse sidebar</button>
+      </div>
+      <div class="sidebar">
+          <div class="options">
+            <h2>Filter by Color</h2>
+            <div class="filters" id="filters"></div>
+            <div class="color-filters">
+              <label>Primary Color: <input type="color" id="colorPicker" value="#ff0000"></label><br>
+              <button id="toggleSecondColor" style="margin-top:6px;">Add Second Color</button><br>
+              <input type="color" id="colorPicker2" value="#0000ff" style="display:none; margin-top:6px;"><br>
+              <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
+              <label style="display:block; margin-top:6px;">Color Name: <input id="colorNameFilter" placeholder="e.g. red"></label><br>
+              <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" placeholder="#rrggbb"></label><br>
+              <div style="margin-top:6px;">
+                <button id="applyColorFilter">Apply</button>
+                <button id="clearFilters">Clear</button>
+              </div>
+            </div>
+          </div>
+          <div class="options">
+            <h2>Search Titles</h2>
+            <input id="search" placeholder="Search titles..." class="search-bar">
+          </div>
+          <div class="view-bar">
+              <button id="viewList">View Workspace as List</button>
+              <button id="workspaceFullscreenBtn">View Workspace Full Screen</button>
+              <button id="instructionsBtn">Instructions</button>
+          </div>
+      </div>
+      
+    </div>
+    <div id="gridContainer">
+      <div class="image-grid" id="imageGrid"></div>
+    </div>
+  </div>
+    <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <h3>Workspace Items</h3>
+      <table id="workspaceTable" style="width:100%;">
+        <thead><tr><th>Thumbnail</th><th>Title</th><th>ID</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button id="downloadCSV" style="margin-top: 10px; padding: 5px 10px;">Download CSV</button>
+      <button id="closeModal" style="margin-top: 10px; padding: 5px 10px;">Close</button>
+    </div>
+  </div>
+
+  <div id="instructionsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <div id="instructionsText"></div>
+      <button id="closeInstructionsModal" style="margin-top:10px;">Close</button>
+    </div>
+  </div>
+
+  <div id="imageModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1001;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <img id="modalImg" style="max-width:100%; height:auto; display:block; margin-bottom:10px;">
+      <div id="modalColors"></div>
+      <button id="closeImageModal" style="margin-top:10px;">Close</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    const filtersDiv = document.getElementById('filters');
+    const searchInput = document.getElementById('search');
+    const imageGrid = document.getElementById('imageGrid');
+    const workspace = document.getElementById('workspace');
+    let data = [];
+    let filter = 'all';
+    let searchTerm = '';
+    let workspaceItems = [];
+    let isPanning = false;
+    let panStartX, panStartY, panLastX, panLastY;
+
+    const viewListBtn = document.getElementById('viewList');
+    const instructionsBtn = document.getElementById('instructionsBtn');
+    const modal = document.getElementById('modal');
+    const instructionsModal = document.getElementById('instructionsModal');
+    const closeModalBtn = document.getElementById('closeModal');
+    const downloadCSVBtn = document.getElementById('downloadCSV');
+    const toggleTopBarBtn = document.getElementById('toggleTopBar');
+    const workspaceFullscreenBtn = document.getElementById('workspaceFullscreenBtn');
+
+    const imageModal = document.getElementById('imageModal');
+    const closeImageModalBtn = document.getElementById('closeImageModal');
+    const closeInstructionsModal = document.getElementById('closeInstructionsModal');
+
+    // update tolerance display
+    const tolEl = document.getElementById('tolerance');
+    if(tolEl){
+      document.getElementById('tolValue').textContent = tolEl.value;
+      tolEl.addEventListener('input', (e)=>{ document.getElementById('tolValue').textContent = e.target.value; });
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      searchTerm = e.target.value.toLowerCase();
+      renderImages();
+    });
+
+    viewListBtn.addEventListener('click', () => {
+      renderWorkspaceTable();
+      modal.style.display = 'block';
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    toggleTopBarBtn.addEventListener('click', () => {
+      const topBar = document.querySelector('.sidebar');
+      topBar.classList.toggle('collapsed');
+      toggleTopBarBtn.textContent = topBar.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+    });
+
+    downloadCSVBtn.addEventListener('click', () => {
+      downloadWorkspaceCSV();
+    });
+
+    workspaceFullscreenBtn.addEventListener('click', () => {
+  const ws = document.getElementById('workspace');
+  const rect = ws.getBoundingClientRect();
+  const cards = ws.querySelectorAll('.workspace-card');
+  cards.forEach(card => {
+    const currentLeft = parseFloat(card.style.left || 0);
+    const currentTop = parseFloat(card.style.top || 0);
+    card.style.left = (currentLeft + rect.left) + 'px';
+    card.style.top = (currentTop + rect.top) + 'px';
+  });
+  ws.classList.add('fullscreen');
+
+  const topBar = document.querySelector('.top-bar');
+  if (topBar) topBar.style.display = 'none';
+  const imageGridEl = document.querySelector('.image-grid');
+  if (imageGridEl) imageGridEl.style.display = 'none';
+  const wsH2 = document.querySelector('#workspaceContainer h2');
+  if (wsH2) wsH2.style.display = 'none';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'X';
+  closeBtn.style.position = 'absolute';
+  closeBtn.style.top = '10px';
+  closeBtn.style.right = '10px';
+  closeBtn.style.zIndex = '10001';
+  closeBtn.style.padding = '5px 10px';
+  closeBtn.style.background = '#ccc';
+  closeBtn.style.border = '1px solid #000';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.onclick = () => {
+    cards.forEach(card => {
+      const currentLeft = parseFloat(card.style.left || 0);
+      const currentTop = parseFloat(card.style.top || 0);
+      card.style.left = (currentLeft - rect.left) + 'px';
+      card.style.top = (currentTop - rect.top) + 'px';
+    });
+    ws.classList.remove('fullscreen');
+
+    const topBar2 = document.querySelector('.top-bar');
+    if (topBar2) topBar2.style.display = '';
+    const imageGridEl2 = document.querySelector('.image-grid');
+    if (imageGridEl2) imageGridEl2.style.display = '';
+    const wsH2b = document.querySelector('#workspaceContainer h2');
+    if (wsH2b) wsH2b.style.display = '';
+    closeBtn.remove();
+  };
+  ws.appendChild(closeBtn);
+});
+    closeImageModalBtn.addEventListener('click', () => {
+      imageModal.style.display = 'none';
+    });
+
+    instructionsBtn.addEventListener('click', () => {
+      renderInstructions();
+      instructionsModal.style.display = 'block';
+    });
+
+    closeInstructionsModal.addEventListener('click', () => {
+      instructionsModal.style.display = 'none';
+    });
+
+    // color filter controls hook
+    const applyColorBtn = document.getElementById('applyColorFilter');
+    if(applyColorBtn) applyColorBtn.addEventListener('click', applyFilters);
+    const toggleSecondBtn = document.getElementById('toggleSecondColor');
+    if(toggleSecondBtn) toggleSecondBtn.addEventListener('click', toggleSecondColor);
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{
+      document.getElementById('colorPicker').value = '#ff0000';
+      document.getElementById('colorPicker2').value = '#0000ff';
+      document.getElementById('colorNameFilter').value = '';
+      document.getElementById('searchHex').value = '';
+      const tol = document.getElementById('tolerance');
+      if(tol){ tol.value = 60; document.getElementById('tolValue').textContent = 60; }
+      const cp2 = document.getElementById('colorPicker2');
+      if(cp2){ cp2.style.display = 'none'; document.getElementById('toggleSecondColor').textContent = 'Add Second Color'; }
+      applyFilters();
+    });
+
+    function renderWorkspaceTable() {
+      const tbody = document.querySelector('#workspaceTable tbody');
+      tbody.innerHTML = '';
+      workspaceItems.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><img src="${item.url}" style="width:50px; height:50px; object-fit:cover;"></td><td>${item.name}</td><td>${item.id}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderInstructions() {
+      const div = document.querySelector('#instructionsText');
+      div.innerHTML = `
+        <h3>Instructions</h3>
+        <p>Use the color filters and search bar to find images by their dominant colors and titles.</p>
+        <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
+        <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
+        <p>You can pan the workspace by clicking and dragging on empty space.</p>
+        <span class="highlight">View Workspace Full Screen"</span> Expand the workspace to full screen for easier arrangement of images.</p>
+        <span class="highlight">View Workspace as List</span>: See a tabular view of all images currently in the workspace, with an option to download the list as a CSV file.</p>
+      `;
+    }
+
+    function downloadWorkspaceCSV() {
+      let csv = 'Title,ID,URL\n';
+      workspaceItems.forEach(item => {
+        csv += `"${item.name}","${item.id}","${item.url}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'workspace_items.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // helper to normalize names
+    function normName(s){ return (s||'').toString().toLowerCase().trim(); }
+
+    async function loadCSV() {
+      const response = await fetch('../data/pylette_metadata.csv');
+      const csvText = await response.text();
+      // this CSV has a header row; parse into objects
+      const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+      // Group rows by image_url
+      const byImage = {};
+      parsed.data.forEach(row => {
+        const img = (row.image_url || '').toString().trim();
+        if(!img) return;
+        if(!byImage[img]) byImage[img] = { image_url: img, id: row.filename || '', w_cm: row.w_cm || '', title: row.name || '', raw: [] };
+        byImage[img].raw.push({ color: row.hex, proportion: row.frequency, title: row.name, filename: row.filename });
+      });
+      data = Object.keys(byImage).map((imgUrl, idx) => {
+        const group = byImage[imgUrl];
+        // sort by proportion (frequency) descending so dominant colors come first
+        group.raw.sort((a,b)=> (parseFloat(b.proportion)||0) - (parseFloat(a.proportion)||0));
+        const colors = group.raw.map(rr=>({
+          hex: (rr.color||'').toString(),
+          proportion: parseFloat(rr.proportion) || 0,
+          color_name: normName(rr.color || '')
+        })).filter(c=>c.hex);
+        return {
+          id: group.id || `img-${idx}`,
+          name: group.title || `Image ${idx+1}`,
+          width: parseFloat(group.w_cm) || 3,
+          // pylette_metadata.csv already contains absolute image URLs in `image_url`
+          url: group.image_url,
+          colors,
+          raw: group.raw
+        };
+      });
+      renderFilters();
+      renderImages();
+    }
+
+    // color filters UI is static; keep renderFilters as a no-op for compatibility
+    function renderFilters(){ /* no-op: color filter UI built in HTML */ }
+
+    // --- color helper functions borrowed from filter-app/app.js ---
+    function normalizeHex(h){
+      if(!h) return '';
+      h = h.trim();
+      if(h[0] !== '#') h = '#'+h;
+      if(h.length===4){ // #rgb -> expand
+        h = '#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];
+      }
+      return h.toLowerCase();
+    }
+
+    function hexToRgb(hex){
+      if(!hex) return {r:0,g:0,b:0};
+      hex = hex.replace('#','');
+      if(hex.length===3) hex = hex.split('').map(ch=>ch+ch).join('');
+      const n = parseInt(hex,16);
+      return {r:(n>>16)&255, g:(n>>8)&255, b:n&255};
+    }
+
+    function colorDistance(a,b){
+      // simple RGB Euclidean distance
+      const dr = a.r-b.r, dg=a.g-b.g, db=a.b-b.b;
+      return Math.sqrt(dr*dr+dg*dg+db*db);
+    }
+
+    function rgbToHsl(r,g,b){
+      r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b);
+      let h=0,s=0,l=(max+min)/2;
+      if(max!==min){
+        const d=max-min;
+        s = l>0.5?d/(2-max-min):d/(max+min);
+        switch(max){
+          case r: h=(g-b)/d + (g<b?6:0); break;
+          case g: h=(b-r)/d + 2; break;
+          case b: h=(r-g)/d + 4; break;
+        }
+        h/=6;
+      }
+      return {h: h*360, s, l};
+    }
+
+    function colorNameFromHex(hex){
+      // map HSL hue ranges to simple color names
+      const {r,g,b} = hexToRgb(hex);
+      const hsl = rgbToHsl(r,g,b);
+      const h = hsl.h;
+      const l = hsl.l;
+      const s = hsl.s;
+      if(l < 0.12) return 'black';
+      if(l > 0.92) return 'white';
+      if(s < 0.12) return 'gray';
+      if(h >= 345 || h < 15) return 'red';
+      if(h >= 15 && h < 45) return 'orange';
+      if(h >= 45 && h < 75) return 'yellow';
+      if(h >= 75 && h < 165) return 'green';
+      if(h >= 165 && h < 195) return 'cyan';
+      if(h >= 195 && h < 255) return 'blue';
+      if(h >= 255 && h < 285) return 'purple';
+      if(h >= 285 && h < 330) return 'magenta';
+      return 'pink';
+    }
+
+    function toggleSecondColor(){
+      const picker2 = document.getElementById('colorPicker2');
+      const btn = document.getElementById('toggleSecondColor');
+      if(picker2.style.display === 'none'){
+        picker2.style.display = 'inline';
+        btn.textContent = 'Remove Second Color';
+      } else {
+        picker2.style.display = 'none';
+        btn.textContent = 'Add Second Color';
+      }
+    }
+
+    // apply filters and store active filter state; renderImages reads window._colorFilter
+    function applyFilters(){
+      const clr = normalizeHex(document.getElementById('colorPicker').value || '');
+      const tol = parseInt(document.getElementById('tolerance').value || 60);
+      const cp2 = document.getElementById('colorPicker2');
+      const clr2 = cp2 && cp2.style.display !== 'none' ? normalizeHex(cp2.value || '') : '';
+      const colorName = (document.getElementById('colorNameFilter').value || '').toLowerCase();
+      const searchHex = normalizeHex(document.getElementById('searchHex').value || '');
+
+      window._colorFilter = { clr, clr2, tol, colorName, searchHex };
+      renderImages();
+    }
+
+    function renderImages() {
+      // If color filters are active (from applyFilters), use them; otherwise fall back to original name-based filter
+      const cf = window._colorFilter || {};
+      let images = data.filter(i => {
+        // text search still applies
+        const matchesSearch = !searchTerm || (i.name || '').toLowerCase().includes(searchTerm);
+        if(!matchesSearch) return false;
+
+        // if no color-based filter active, keep all
+        if(!cf.clr && !cf.clr2 && !cf.searchHex && !cf.colorName) return true;
+
+        // check inclusion based on active color filters
+        // searchHex exact-ish match
+        if(cf.searchHex){
+          let best = 0;
+          i.colors.forEach(c=>{
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) <= 24){
+              if(c.proportion > best) best = c.proportion;
+            }
+          });
+          return best > 0;
+        }
+        // two color pickers -> require both
+        if(cf.clr && cf.clr2){
+          let best1=0, best2=0;
+          i.colors.forEach(c=>{
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr)) <= cf.tol){ if(c.proportion>best1) best1=c.proportion; }
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr2)) <= cf.tol){ if(c.proportion>best2) best2=c.proportion; }
+          });
+          return best1>0 && best2>0;
+        }
+        // single color picker
+        if(cf.clr){
+          let best = 0;
+          i.colors.forEach(c=>{
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr)) <= cf.tol){
+              if(c.proportion > best) best = c.proportion;
+            }
+          });
+          return best>0;
+        }
+        // color name filter
+        if(cf.colorName){
+          let best = 0;
+          i.colors.forEach(c=>{
+            if(colorNameFromHex(c.hex) === cf.colorName){
+              if(c.proportion > best) best = c.proportion;
+            }
+          });
+          return best>0;
+        }
+        return true;
+      });
+
+      // optional sorting: if a color filter was applied, sort by best-matching proportion
+      if(window._colorFilter && (window._colorFilter.clr || window._colorFilter.searchHex || window._colorFilter.colorName)){
+        images = images.sort((a,b)=>{
+          const score = (img)=>{
+            let best = 0;
+            const cf2 = window._colorFilter;
+            if(cf2.searchHex){
+              img.colors.forEach(c=>{ if(colorDistance(hexToRgb(c.hex), hexToRgb(cf2.searchHex))<=24) best = Math.max(best, c.proportion); });
+              return best;
+            }
+            if(cf2.clr && !cf2.clr2){
+              img.colors.forEach(c=>{ if(colorDistance(hexToRgb(c.hex), hexToRgb(cf2.clr))<=cf2.tol) best = Math.max(best, c.proportion); });
+              return best;
+            }
+            if(cf2.clr && cf2.clr2){
+              let b1=0,b2=0;
+              img.colors.forEach(c=>{
+                if(colorDistance(hexToRgb(c.hex), hexToRgb(cf2.clr))<=cf2.tol) b1 = Math.max(b1, c.proportion);
+                if(colorDistance(hexToRgb(c.hex), hexToRgb(cf2.clr2))<=cf2.tol) b2 = Math.max(b2, c.proportion);
+              });
+              return b1+b2;
+            }
+            if(cf2.colorName){
+              img.colors.forEach(c=>{ if(colorNameFromHex(c.hex) === cf2.colorName) best = Math.max(best, c.proportion); });
+              return best;
+            }
+            return 0;
+          };
+          return score(b) - score(a);
+        });
+      }
+
+      imageGrid.innerHTML = '';
+      images.forEach(img => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.draggable = true;
+        card.ondragstart = (e) => e.dataTransfer.setData('id', img.id);
+        card.onclick = () => addToWorkspace(img, 0, 0);
+        // show a small swatch row for the top colors
+        const imgEl = document.createElement('img');
+        imgEl.src = img.url;
+        imgEl.alt = img.name;
+        card.appendChild(imgEl);
+        
+        const swatchesDiv = document.createElement('div');
+        img.colors.slice(0,5).forEach(c => {
+          const span = document.createElement('span');
+          span.title = c.color_name;
+          span.style.display = 'inline-block';
+          span.style.width = '14px';
+          span.style.height = '14px';
+          span.style.background = c.hex;
+          span.style.marginRight = '4px';
+          span.style.border = '1px solid #fff';
+          swatchesDiv.appendChild(span);
+        });
+        card.appendChild(swatchesDiv);
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.style.marginTop = '6px';
+        nameDiv.style.cursor = 'pointer';
+        nameDiv.textContent = img.name;
+        nameDiv.onclick = (e) => { e.stopPropagation(); openModal(img.id); };
+        card.appendChild(nameDiv);
+        
+        imageGrid.appendChild(card);
+      });
+    }
+
+    function openModal(id) {
+      const img = data.find(i => i.id === id);
+      document.getElementById('modalImg').src = img.url;
+      const colorsDiv = document.getElementById('modalColors');
+      colorsDiv.innerHTML = '';
+      img.colors.forEach(c => {
+        const div = document.createElement('div');
+        div.style.marginBottom = '5px';
+        div.innerHTML = `<span style="display:inline-block;width:20px;height:20px;background:${c.hex};border:1px solid #000;margin-right:10px;vertical-align:middle;"></span> <strong>${c.hex}</strong> - ${c.color_name} (${Math.round(c.proportion*100)}%)`;
+        colorsDiv.appendChild(div);
+      });
+      imageModal.style.display = 'block';
+    }
+
+    function addToWorkspace(img, x = 50, y = 50) {
+      if ([...workspace.children].some(el => el.dataset.id === img.id)) return;
+      const div = document.createElement('div');
+      div.className = 'workspace-card';
+      div.dataset.id = img.id;
+      div.style.position = 'absolute';
+      div.style.left = x + 'px';
+      div.style.top = y + 'px';
+      div.innerHTML = `<img src="${img.url}" alt="${img.name}" style="width:${img.width * 5}px">`;
+
+      let offsetX, offsetY, isDragging = false;
+
+      div.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+        div.style.zIndex = 1000;
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const rect = workspace.getBoundingClientRect();
+        div.style.left = e.clientX - rect.left - offsetX + 'px';
+        div.style.top = e.clientY - rect.top - offsetY + 'px';
+      });
+
+      document.addEventListener('mouseup', (e) => {
+        if (isDragging) {
+          const rect = workspace.getBoundingClientRect();
+          if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+            workspace.removeChild(div);
+            const index = workspaceItems.findIndex(item => item.id === div.dataset.id);
+            if (index > -1) {
+              workspaceItems.splice(index, 1);
+            }
+          }
+          isDragging = false;
+          div.style.zIndex = '';
+        }
+      });
+
+      workspace.appendChild(div);
+      workspaceItems.push({ id: img.id, name: img.name, url: img.url });
+    }
+
+    workspace.addEventListener('dragover', (e) => e.preventDefault());
+    workspace.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData('id');
+      const img = data.find(i => i.id === id);
+      if (img) {
+        const rect = workspace.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        addToWorkspace(img, x, y);
+      }
+    });
+
+    workspace.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.workspace-card')) return;
+      isPanning = true;
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+      panLastX = e.clientX;
+      panLastY = e.clientY;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      const deltaX = e.clientX - panLastX;
+      const deltaY = e.clientY - panLastY;
+      const cards = workspace.querySelectorAll('.workspace-card');
+      cards.forEach(card => {
+        const currentLeft = parseFloat(card.style.left || 0);
+        const currentTop = parseFloat(card.style.top || 0);
+        card.style.left = (currentLeft + deltaX) + 'px';
+        card.style.top = (currentTop + deltaY) + 'px';
+      });
+      panLastX = e.clientX;
+      panLastY = e.clientY;
+    });
+
+    document.addEventListener('mouseup', () => {
+      isPanning = false;
+    });
+
+    loadCSV();
+  </script>
+
+
+</body>
+</html>
