@@ -31,9 +31,8 @@
               <label>Primary Color: <input type="color" id="colorPicker" value="#ff0000"></label><br>
               <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
               <label style="display:block; margin-top:6px;">Color Name: <input id="colorNameFilter" placeholder="e.g. red"></label><br>
-              <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" placeholder="#rrggbb"></label><br>
-              <div style="margin-top:6px;">
-                <button id="applyColorFilter">Apply</button>
+              <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" placeholder="#rrggbb"></label>
+              <div>
                 <button id="clearFilters">Clear</button>
               </div>
             </div>
@@ -199,10 +198,18 @@
       instructionsModal.style.display = 'none';
     });
 
-    // color filter controls hook
-    const applyColorBtn = document.getElementById('applyColorFilter');
-    if(applyColorBtn) applyColorBtn.addEventListener('click', applyFilters);
+    // color filter controls hook — auto-apply on input
     const clearFiltersBtn = document.getElementById('clearFilters');
+    const colorPickerEl = document.getElementById('colorPicker');
+    const tolElInput = document.getElementById('tolerance');
+    const colorNameEl = document.getElementById('colorNameFilter');
+    const searchHexEl = document.getElementById('searchHex');
+
+    if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
+    if(tolElInput) tolElInput.addEventListener('input', applyFilters);
+    if(colorNameEl) colorNameEl.addEventListener('input', applyFilters);
+    if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
+
     if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{
       document.getElementById('colorPicker').value = '#ff0000';
       document.getElementById('colorNameFilter').value = '';
