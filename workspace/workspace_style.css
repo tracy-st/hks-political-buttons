@@ -245,29 +245,37 @@
 
 
 
-    /* Collapsed sidebar layout: shrink sidebar and allow workspace to grow */
+    /* Collapsed sidebar layout: hide sidebar and allow workspace to fill */
     .content-with-sidebars.sidebar-collapsed > *:nth-child(1) {
-      width: calc(100% - 60px) !important;
-      max-width: calc(100% - 60px) !important;
+      width: 100% !important;
+      max-width: 100% !important;
     }
-       /* 
     .content-with-sidebars.sidebar-collapsed > *:nth-child(2) {
-      width: 60px !important;
-      max-width: 60px !important;
-      min-width: 60px !important;
+      width: 0 !important;
+      max-width: 0 !important;
+      min-width: 0 !important;
       overflow: visible !important;
     }
-      */
 
-    /* When the outer #sidebar has .collapsed, hide the inner .sidebar content but keep the toggle visible */
+    /* When the outer #sidebar has .collapsed, completely hide the container but keep toggle button visible via absolute positioning */
+    #sidebar.collapsed {
+      width: 0 !important;
+      min-width: 0 !important;
+      padding: 0 !important;
+      overflow: visible; /* allow toggle button to show outside */
+    }
     #sidebar.collapsed .sidebar {
       display: none !important;
     }
     #sidebar.collapsed .right-controls {
       display: flex !important;
       position: absolute;
-      right: 8px;
-      top: 8px;
+      left: 0;
+      top: 0;
       z-index: 1002;
       background: transparent;
+      width: 40px;
+      height: 40px;
+      align-items: center;
+      justify-content: center;
     }
