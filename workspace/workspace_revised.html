@@ -28,30 +28,27 @@
           </div>
         </div>
       </div>
+                <div class="view-bar">
+              <button id="viewList">View Workspace as List</button>
+              <button id="workspaceFullscreenBtn">View Workspace Full Screen</button>
+              <button id="instructionsBtn">Instructions</button>
+          </div>
     </div>
      <div id="sidebar" class="sticky">
       <div class="sidebar">
           <div class="options">
+                          <div>
+                <button id="clearFilters">Clear All</button>
+              </div>
             <h2>Filter by Color</h2>
-            <div class="filters" id="filters"></div>
+
             <div class="color-filters">
               <label>Primary Color: <input type="color" id="colorPicker" value="#ff0000"></label><br>
                <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" placeholder="#rrggbb"></label>
              
-              <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
+              <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="150" value="60"><span id="tolValue">60</span></label><br>
               
                 <!-- removed Color Name filter -->
-              <div>
-                <button id="clearFilters">Clear</button>
-              </div>
-            </div>
-          </div>
-          <div class="options">
-            <h2>Show only:</h2>
-            <div class="decade-filters" id="decadeFilters"></div>
-            <div>
-              <button id="selectAllDecades">Select All</button>
-              <button id="deselectAllDecades">Deselect All</button>
             </div>
           </div>
           <div class="options">
@@ -66,10 +63,13 @@
             <h2>Search Titles</h2>
             <input id="search" placeholder="Search titles..." class="search-bar">
           </div>
-          <div class="view-bar">
-              <button id="viewList">View Workspace as List</button>
-              <button id="workspaceFullscreenBtn">View Workspace Full Screen</button>
-              <button id="instructionsBtn">Instructions</button>
+                    <div class="options">
+            <h2>Show only:</h2>
+            <div class="decade-filters" id="decadeFilters"></div>
+            <div>
+              <button id="selectAllDecades">Select All</button>
+              <button id="deselectAllDecades">Deselect All</button>
+            </div>
           </div>
       </div>
       
@@ -328,7 +328,7 @@
       clearFiltersBtn.addEventListener('click', () => {
         currentState = JSON.parse(JSON.stringify(defaultState));
         syncUIWithState();
-        renderImages();
+
       });
     }
 
@@ -378,7 +378,6 @@
         renderDecadeFilters();
         renderMetadataFilters(uniqueValues);
         syncUIWithState();
-        renderImages();
       } catch(err) { console.error('Error loading CSV:', err); }
     }
 
@@ -446,6 +445,11 @@
       });
       document.getElementById('imageModal').style.display = 'block';
     }
+
+     // image modal close button
+    const closeImageModalBtn = document.getElementById('closeImageModal');
+    if(closeImageModalBtn){ closeImageModalBtn.addEventListener('click', ()=>{ const im = document.getElementById('imageModal'); if(im) im.style.display = 'none'; }); }
+
 
     function addToWorkspace(img, x=50, y=50){
       if([...(wsInner||workspace).children].some(el=>el.dataset.id===img.id)) return;
