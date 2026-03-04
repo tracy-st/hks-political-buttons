@@ -59,6 +59,7 @@
       
     </div>
     <div id="gridContainer">
+      <div id="resultCount" style="padding:10px; font-size:14px; color:#666; font-weight:500;"></div>
       <div class="image-grid" id="imageGrid"></div>
     </div>
   </div>
@@ -133,20 +134,27 @@
     const closeImageModalBtn = document.getElementById('closeImageModal');
     if(closeImageModalBtn){ closeImageModalBtn.addEventListener('click', ()=>{ const im = document.getElementById('imageModal'); if(im) im.style.display = 'none'; }); }
 
+    // Construct IIIF thumbnail URL from iiifId
+    function buildIIIFUrl(iiifId){
+      if(!iiifId) return '';
+      return `https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/${iiifId}/full/,300/0/default.jpg`;
+    }
+
     async function loadCSV(){
-      const resp = await fetch('../data/pylette_metadata.csv');
+      const resp = await fetch('../data/hks_buttons_color_metadata.csv');
       const text = await resp.text();
       const parsed = Papa.parse(text,{ header:true, skipEmptyLines:true });
       const byImage = {};
       parsed.data.forEach(row=>{
-        const img = (row.image_url||'').trim(); if(!img) return;
-        if(!byImage[img]) byImage[img] = { image_url: img, id: row.filename||'', w_cm: row.w_cm||'', title: row.name||'', raw: [] };
-        byImage[img].raw.push({ color: row.hex, proportion: row.frequency, title: row.name, filename: row.filename });
+        const iiifId = (row.iiifid||'').trim(); if(!iiifId) return;
+        if(!byImage[iiifId]) byImage[iiifId] = { iiifId: iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', raw: [] };
+        // use Hex header for color
+        byImage[iiifId].raw.push({ color: row.Hex, proportion: row.frequency });
       });
       data = Object.keys(byImage).map((k,idx)=>{
         const g = byImage[k]; g.raw.sort((a,b)=> (parseFloat(b.proportion)||0) - (parseFloat(a.proportion)||0));
         const colors = g.raw.map(rr=>({ hex: (rr.color||''), proportion: parseFloat(rr.proportion)||0 })).filter(c=>c.hex);
-        return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+1}`, width: parseFloat(g.w_cm)||3, url: g.image_url, colors, raw:g.raw };
+        return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, raw:g.raw };
       });
       renderImages();
     }
@@ -198,6 +206,10 @@
       }
 
       imageGrid.innerHTML = '';
+      
+      // update result count
+      const countEl = document.getElementById('resultCount');
+      if(countEl) countEl.textContent = `${images.length} / ${data.length} results`;
       images.forEach(img => {
         const card = document.createElement('div');
         card.className = 'image-card';
@@ -278,7 +290,6 @@
     if(tolEl) tolEl.addEventListener('input', applyFilters);
     if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
     if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } applyFilters(); });
-
 
     // addToWorkspace uses logical coords
     function addToWorkspace(img, x=50, y=50){
