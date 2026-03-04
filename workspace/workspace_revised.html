@@ -479,12 +479,80 @@
     document.addEventListener('mouseup',()=>{ isPanning=false; });
     workspace.addEventListener('wheel',(e)=>{ e.preventDefault(); const mouse = screenToLogical(e.clientX, e.clientY); const delta = e.deltaY>0 ? -0.1 : 0.1; const newZoom = clamp(zoom + delta, 0.5, 3); panX = (mouse.lx + panX) * (zoom / newZoom) - mouse.lx; panY = (mouse.ly + panY) * (zoom / newZoom) - mouse.ly; zoom = newZoom; applyTransform(); });
 
-    // Modals & UI Toggles
-    const instructionsBtn = document.getElementById('instructionsBtn');
-    if(instructionsBtn) instructionsBtn.addEventListener('click', () => document.getElementById('instructionsModal').style.display = 'block');
-    document.getElementById('closeInstructionsModal').addEventListener('click', () => document.getElementById('instructionsModal').style.display = 'none');
-    document.getElementById('closeImageModal').addEventListener('click', () => document.getElementById('imageModal').style.display = 'none');
 
+    // --- workspace list modal and CSV export ---
+    function renderWorkspaceTable(){
+      const modal = document.getElementById('modal');
+      const tbody = document.querySelector('#workspaceTable tbody');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      if(!workspaceItems || workspaceItems.length===0){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td'); td.colSpan = 3; td.textContent = 'No items in workspace'; tr.appendChild(td); tbody.appendChild(tr); return;
+      }
+      workspaceItems.forEach(it => {
+        const tr = document.createElement('tr');
+        const tdThumb = document.createElement('td');
+        const img = document.createElement('img'); img.src = it.url; img.style.width = '60px'; img.style.height = 'auto'; tdThumb.appendChild(img);
+        const tdTitle = document.createElement('td'); tdTitle.textContent = it.name || '';
+        const tdId = document.createElement('td'); tdId.textContent = it.id || '';
+        tr.appendChild(tdThumb); tr.appendChild(tdTitle); tr.appendChild(tdId);
+        tbody.appendChild(tr);
+      });
+    }
+
+    const viewListBtn = document.getElementById('viewList');
+    if(viewListBtn){ viewListBtn.addEventListener('click', ()=>{ renderWorkspaceTable(); const m = document.getElementById('modal'); if(m) m.style.display = 'block'; }); }
+
+    const closeModalBtn = document.getElementById('closeModal');
+    if(closeModalBtn){ closeModalBtn.addEventListener('click', ()=>{ const m = document.getElementById('modal'); if(m) m.style.display = 'none'; }); }
+
+    const downloadCSVBtn = document.getElementById('downloadCSV');
+    if(downloadCSVBtn){ downloadCSVBtn.addEventListener('click', ()=>{
+      if(!workspaceItems || workspaceItems.length===0) return; const rows = [['id','name','url']]; workspaceItems.forEach(it=> rows.push([it.id||'', it.name||'', it.url||''])); const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'); const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'workspace_items.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }); }
+
+    // --- fullscreen toggle for workspace container ---
+    const fsBtn = document.getElementById('workspaceFullscreenBtn');
+    const wsContainerEl = document.getElementById('workspaceContainer') || workspace;
+    if(fsBtn){
+      fsBtn.addEventListener('click', async ()=>{
+        const doc = document;
+        const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+        try{
+          if(!isFull){
+            if(wsContainerEl.requestFullscreen) await wsContainerEl.requestFullscreen();
+            else if(wsContainerEl.webkitRequestFullscreen) wsContainerEl.webkitRequestFullscreen();
+            else if(wsContainerEl.mozRequestFullScreen) wsContainerEl.mozRequestFullScreen();
+            else if(wsContainerEl.msRequestFullscreen) wsContainerEl.msRequestFullscreen();
+            fsBtn.textContent = 'Exit Full Screen';
+          } else {
+            if(doc.exitFullscreen) await doc.exitFullscreen();
+            else if(doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+            else if(doc.mozCancelFullScreen) doc.mozCancelFullScreen();
+            else if(doc.msExitFullscreen) doc.msExitFullscreen();
+            fsBtn.textContent = 'View Workspace Full Screen';
+          }
+        }catch(err){ console.warn('Fullscreen toggle failed', err); }
+      });
+    }
+
+    document.addEventListener('fullscreenchange', ()=>{
+      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      if(fsBtn) fsBtn.textContent = isFS ? 'Exit Full Screen' : 'View Workspace Full Screen';
+    });
+
+    // --- sidebar collapse/expand ---
+    const toggleTopBarBtn = document.getElementById('toggleTopBar');
+    const workspaceColumnsEl = document.getElementById('workspaceColumns');
+    const sidebarEl = document.getElementById('sidebar');
+    if(toggleTopBarBtn && sidebarEl && workspaceColumnsEl){
+      toggleTopBarBtn.addEventListener('click', ()=>{
+        const collapsed = sidebarEl.classList.toggle('collapsed');
+        workspaceColumnsEl.classList.toggle('sidebar-collapsed', collapsed);
+        toggleTopBarBtn.textContent = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+      });
+    }
     loadCSV();
     applyTransform();
   </script>
