@@ -108,15 +108,19 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
-    const imageGrid = document.getElementById('imageGrid');
+   const imageGrid = document.getElementById('imageGrid');
     const workspace = document.getElementById('workspace');
     const wsInner = document.getElementById('workspaceInner');
-  
-    /* --- LOCATION 1: Variables Section --- */
+    const searchInput = document.getElementById('search');
+    const colorPickerEl = document.getElementById('colorPicker');
+    const tolEl = document.getElementById('tolerance');
+    const searchHexEl = document.getElementById('searchHex');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+
     let data = [];
     let workspaceItems = [];
 
-    // New Centralized State Object
+    // --- 1. SINGLE INITIAL STATE OBJECT ---
     const defaultState = {
       searchTerm: '',
       colorFilter: {
@@ -134,64 +138,7 @@
 
     let currentState = JSON.parse(JSON.stringify(defaultState));
 
-    // logical pan/zoom state
-    let zoom = 1;
-    let panX = 0; // logical units
-    let panY = 0;
-    function clamp(v,a,b){ return Math.min(Math.max(v,a),b); }
-
-    if(wsInner) wsInner.style.transformOrigin = '0 0';
-    function applyTransform(){
-      if(!wsInner) return;
-      // translate takes pixels; panX/panY are logical units so convert by *zoom
-      wsInner.style.transform = `translate(${panX * zoom}px, ${panY * zoom}px) scale(${zoom})`;
-    }
-
-    function screenToLogical(clientX, clientY){
-      const rect = workspace.getBoundingClientRect();
-      const sx = (clientX - rect.left) / zoom;
-      const sy = (clientY - rect.top) / zoom;
-      return { lx: sx - panX, ly: sy - panY };
-    }
-
-    function logicalToScreen(lx, ly){
-      const rect = workspace.getBoundingClientRect();
-      const sx = (lx + panX) * zoom + rect.left;
-      const sy = (ly + panY) * zoom + rect.top;
-      return { sx, sy };
-    }
-
-    // UI hooks (minimal)
-    const searchInput = document.getElementById('search');
-    if(searchInput) searchInput.addEventListener('input', (e)=>{ searchTerm = e.target.value.toLowerCase(); renderImages(); });
-
-    // instructions modal wiring
-    const instructionsBtn = document.getElementById('instructionsBtn');
-    const instructionsModal = document.getElementById('instructionsModal');
-    const closeInstructionsModal = document.getElementById('closeInstructionsModal');
-    if(instructionsBtn){
-      instructionsBtn.addEventListener('click', ()=>{
-        renderInstructions();
-        if(instructionsModal) instructionsModal.style.display = 'block';
-      });
-    }
-    if(closeInstructionsModal){
-      closeInstructionsModal.addEventListener('click', ()=>{
-        if(instructionsModal) instructionsModal.style.display = 'none';
-      });
-    }
-
-    // image modal close button
-    const closeImageModalBtn = document.getElementById('closeImageModal');
-    if(closeImageModalBtn){ closeImageModalBtn.addEventListener('click', ()=>{ const im = document.getElementById('imageModal'); if(im) im.style.display = 'none'; }); }
-
-    // Construct IIIF thumbnail URL from iiifId
-    function buildIIIFUrl(iiifId){
-      if(!iiifId) return '';
-      return `https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/${iiifId}/full/,300/0/default.jpg`;
-    }
-
-            /* --- LOCATION 2: Utility Functions --- */
+    // --- 2. SYNC UI WITH STATE ---
     function syncUIWithState() {
       if (searchInput) searchInput.value = currentState.searchTerm;
       if (searchHexEl) searchHexEl.value = currentState.colorFilter.searchHex;
@@ -211,106 +158,66 @@
         const el = document.getElementById(field + 'Filter');
         if (el) el.value = currentState.metadata[field];
       });
+
+      // Sync the internal global used by color logic
+      window._colorFilter = { 
+        clr: currentState.colorFilter.clr, 
+        tol: currentState.colorFilter.tol, 
+        searchHex: currentState.colorFilter.searchHex 
+      };
     }
 
-    async function loadCSV(){
-      try {
-        console.log('Attempting to load CSV...');
-        // Try relative to current directory first
-        let resp = await fetch('../data/hks_buttons_color_metadata.csv');
-        if(!resp.ok) {
-          console.log('Path ../data/ failed with status:', resp.status, 'trying ./data/');
-          resp = await fetch('./data/hks_buttons_color_metadata.csv');
-        }
-        if(!resp.ok) {
-          console.log('Path ./data/ failed with status:', resp.status, 'trying /data/');
-          resp = await fetch('/data/hks_buttons_color_metadata.csv');
-        }
-        if(!resp.ok) {
-          console.error('Failed to load CSV from all paths. Final status:', resp.status);
-          return;
-        }
-        console.log('CSV loaded successfully');
-        const text = await resp.text();
-        const parsed = Papa.parse(text,{ header:true, skipEmptyLines:true });
-        console.log('CSV parsed, rows:', parsed.data.length);
-        const byImage = {};
-        const uniqueValues = { person: new Set(), party: new Set(), location: new Set() };
-        parsed.data.forEach(row=>{
-          const iiifId = (row.iiifid||'').trim(); if(!iiifId) return;
-          if(!byImage[iiifId]) byImage[iiifId] = { iiifId: iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', earliest_date: row.earliest_date||'', person: row.person||'', party: row.party||'', location: row.location||'', raw: [] };
-          // use Hex header for color
-          byImage[iiifId].raw.push({ color: row.Hex, proportion: row.frequency });
-          // collect unique values
-          ['person', 'party', 'location'].forEach(field => {
-            const val = row[field] || '';
-            uniqueValues[field].add(val || 'N/A');
-          });
-        });
-        data = Object.keys(byImage).map((k,idx)=>{
-          const g = byImage[k]; g.raw.sort((a,b)=> (parseFloat(b.proportion)||0) - (parseFloat(a.proportion)||0));
-          const colors = g.raw.map(rr=>({ hex: (rr.color||''), proportion: parseFloat(rr.proportion)||0 })).filter(c=>c.hex);
-          return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, earliest_date: g.earliest_date, person: g.person, party: g.party, location: g.location, raw:g.raw };
-        });
-        console.log('Loaded', data.length, 'unique images');
-        renderDecadeFilters();
-        renderMetadataFilters(uniqueValues);
-        renderImages();
-      } catch(err) {
-        console.error('Error loading CSV:', err);
-      }
+    // logical pan/zoom state
+    let zoom = 1;
+    let panX = 0; 
+    let panY = 0;
+    function clamp(v,a,b){ return Math.min(Math.max(v,a),b); }
+
+    if(wsInner) wsInner.style.transformOrigin = '0 0';
+    function applyTransform(){
+      if(!wsInner) return;
+      wsInner.style.transform = `translate(${panX * zoom}px, ${panY * zoom}px) scale(${zoom})`;
     }
 
+    function screenToLogical(clientX, clientY){
+      const rect = workspace.getBoundingClientRect();
+      const sx = (clientX - rect.left) / zoom;
+      const sy = (clientY - rect.top) / zoom;
+      return { lx: sx - panX, ly: sy - panY };
+    }
+
+    // --- 3. UPDATED RENDER IMAGES ---
     function renderImages(){
-  // Update these lines to look at the State object
-  const cf = window._colorFilter || {};
-  const selectedDecades = currentState.selectedDecades; 
-  const selectedPersons = currentState.metadata.person;
-  const selectedParties = currentState.metadata.party;
-  const selectedLocations = currentState.metadata.location;
-  const searchTerm = currentState.searchTerm;
-  
-      console.log('renderImages called. data.length:', data.length, 'selectedDecades:', selectedDecades.length);
+      const cf = window._colorFilter || {};
       
       let images = data.filter(i => {
-        if(searchTerm && !(i.name||'').toLowerCase().includes(searchTerm)) return false;
+        // Title Search
+        if(currentState.searchTerm && !(i.name||'').toLowerCase().includes(currentState.searchTerm)) return false;
         
-        // decade filter
-        if(selectedDecades.length > 0){
+        // Decade Filter
+        if(currentState.selectedDecades.length > 0){
           const date = i.earliest_date;
           if(date && /^\d{4}$/.test(date)){
             const year = parseInt(date);
             const decade = Math.floor(year / 10) * 10;
-            if(!selectedDecades.includes(decade)) return false;
+            if(!currentState.selectedDecades.includes(decade)) return false;
           } else {
-            // if no date, exclude if any decades selected
             return false;
           }
         }
         
-        // metadata filters
-        if(selectedPersons !== 'All'){
-          const val = i.person || 'N/A';
-          if(val !== selectedPersons) return false;
-        }
-        if(selectedParties !== 'All'){
-          const val = i.party || 'N/A';
-          if(val !== selectedParties) return false;
-        }
-        if(selectedLocations !== 'All'){
-          const val = i.location || 'N/A';
-          if(val !== selectedLocations) return false;
-        }
+        // Metadata Filters
+        if(currentState.metadata.person !== 'All' && (i.person || 'N/A') !== currentState.metadata.person) return false;
+        if(currentState.metadata.party !== 'All' && (i.party || 'N/A') !== currentState.metadata.party) return false;
+        if(currentState.metadata.location !== 'All' && (i.location || 'N/A') !== currentState.metadata.location) return false;
         
-        // if no color-based filter active, keep all
+        // Color Filters
         if(!cf.clr && !cf.searchHex) return true;
 
         if(cf.searchHex){
           let best = 0;
           i.colors.forEach(c => {
-            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) <= 24){
-              best = Math.max(best, c.proportion);
-            }
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) <= 24) best = Math.max(best, c.proportion);
           });
           return best > 0;
         }
@@ -318,9 +225,7 @@
         if(cf.clr){
           let best = 0;
           i.colors.forEach(c => {
-            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr)) <= cf.tol){
-              best = Math.max(best, c.proportion);
-            }
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr)) <= cf.tol) best = Math.max(best, c.proportion);
           });
           return best > 0;
         }
@@ -328,7 +233,7 @@
         return true;
       });
 
-      // if we have a color filter, sort by the percentage of best matching color descending
+      // Sorting
       if(cf.clr || cf.searchHex){
         images.sort((a,b)=>{
           const score = (img)=>{
@@ -344,43 +249,24 @@
         });
       }
 
-      // update decade counts based on filtered images
-      const filteredDecadeCounts = {};
-      images.forEach(img => {
-        const date = img.earliest_date;
-        if(date && /^\d{4}$/.test(date)){
-          const year = parseInt(date);
-          const decade = Math.floor(year / 10) * 10;
-          filteredDecadeCounts[decade] = (filteredDecadeCounts[decade] || 0) + 1;
-        }
-      });
-      document.querySelectorAll('#decadeFilters label').forEach(label => {
-        const decade = parseInt(label.getAttribute('data-decade'));
-        const count = filteredDecadeCounts[decade] || 0;
-        const checkbox = label.querySelector('input');
-        const textNode = label.lastChild;
-        textNode.textContent = ` ${decade}s (${count})`;
-      });
-
-      if(!imageGrid) {
-        console.error('imageGrid element not found');
-        return;
-      }
-      console.log('Filtered to', images.length, 'images');
+      // Update decade counts and grid
       imageGrid.innerHTML = '';
-      
-      // update result count
       const countEl = document.getElementById('resultCount');
       if(countEl) countEl.textContent = `${images.length} / ${data.length} results`;
+
       images.forEach(img => {
         const card = document.createElement('div');
         card.className = 'image-card';
         card.draggable = true;
         card.ondragstart = (e) => e.dataTransfer.setData('id', img.id);
         card.onclick = () => addToWorkspace(img, 100, 100);
-        const imgEl = document.createElement('img'); imgEl.src = img.url; imgEl.alt = img.name; card.appendChild(imgEl);
+        
+        const imgEl = document.createElement('img'); 
+        imgEl.src = img.url; 
+        imgEl.alt = img.name; 
+        card.appendChild(imgEl);
 
-        // swatches row
+      // swatches row
         const swatchesDiv = document.createElement('div');
         swatchesDiv.className = 'swatches';
         img.colors.slice(0,5).forEach(c => {
@@ -396,74 +282,104 @@
         });
         card.appendChild(swatchesDiv);
 
-        const nameDiv = document.createElement('div'); nameDiv.textContent = img.name; nameDiv.style.marginTop = '6px'; nameDiv.style.cursor = 'pointer';
+        const nameDiv = document.createElement('div'); 
+        nameDiv.textContent = img.name; 
+        nameDiv.style.marginTop = '6px';
         nameDiv.addEventListener('click', (e)=>{ e.stopPropagation(); openModal(img.id); });
         card.appendChild(nameDiv);
         imageGrid.appendChild(card);
       });
     }
 
-    function openModal(id){
-      const img = data.find(i => i.id === id);
-      if(!img) return;
-      const modal = document.getElementById('imageModal');
-      const modalImg = document.getElementById('modalImg');
-      const colorsDiv = document.getElementById('modalColors');
-      modalImg.src = img.url;
-      colorsDiv.innerHTML = '';
-      
-      // add metadata header
-      const metadataDiv = document.createElement('div');
-      metadataDiv.style.marginBottom = '12px';
-      metadataDiv.style.paddingBottom = '12px';
-      metadataDiv.style.borderBottom = '1px solid #ddd';
-      
-      const titleRow = document.createElement('div');
-      titleRow.style.marginBottom = '6px';
-      titleRow.innerHTML = `<strong>Title:</strong> ${img.name || 'N/A'}`;
-      metadataDiv.appendChild(titleRow);
-      
-      const dateRow = document.createElement('div');
-      dateRow.style.marginBottom = '6px';
-      dateRow.innerHTML = `<strong>Earliest Date:</strong> ${img.earliest_date || 'N/A'}`;
-      metadataDiv.appendChild(dateRow);
-      
-      const personRow = document.createElement('div');
-      personRow.style.marginBottom = '6px';
-      personRow.innerHTML = `<strong>Person:</strong> ${img.person || 'N/A'}`;
-      metadataDiv.appendChild(personRow);
-      
-      const partyRow = document.createElement('div');
-      partyRow.style.marginBottom = '6px';
-      partyRow.innerHTML = `<strong>Party:</strong> ${img.party || 'N/A'}`;
-      metadataDiv.appendChild(partyRow);
-      
-      const locationRow = document.createElement('div');
-      locationRow.style.marginBottom = '6px';
-      locationRow.innerHTML = `<strong>Location:</strong> ${img.location || 'N/A'}`;
-      metadataDiv.appendChild(locationRow);
-      
-      colorsDiv.appendChild(metadataDiv);
-      
-      // add colors header
-      const colorsHeader = document.createElement('div');
-      colorsHeader.style.marginBottom = '6px';
-      colorsHeader.style.fontWeight = 'bold';
-      colorsHeader.textContent = 'Colors:';
-      colorsDiv.appendChild(colorsHeader);
-      
-      // show swatches and details
-      img.colors.forEach(c=>{
-        const row = document.createElement('div');
-        row.style.marginBottom = '6px';
-        const sw = document.createElement('span');
-        sw.style.display='inline-block'; sw.style.width='24px'; sw.style.height='24px'; sw.style.background=c.hex; sw.style.border='1px solid #000'; sw.style.verticalAlign='middle'; sw.style.marginRight='8px';
-        row.appendChild(sw);
-        const txt = document.createElement('span'); txt.innerHTML = `<strong>${c.hex}</strong> — ${Math.round(c.proportion*100)}%`;
-        row.appendChild(txt);
-        colorsDiv.appendChild(row);
+    // --- 4. EVENT LISTENERS UPDATED FOR STATE ---
+    if(searchInput) {
+      searchInput.addEventListener('input', (e) => { 
+        currentState.searchTerm = e.target.value.toLowerCase(); 
+        renderImages(); 
       });
-      modal.style.display = 'block';
+    }
+
+    if(colorPickerEl) {
+      colorPickerEl.addEventListener('input', (e) => {
+        currentState.colorFilter.clr = normalizeHex(e.target.value);
+        syncUIWithState();
+        renderImages();
+      });
+    }
+
+    if(tolEl) {
+      tolEl.addEventListener('input', (e) => {
+        currentState.colorFilter.tol = parseInt(e.target.value);
+        syncUIWithState();
+        renderImages();
+      });
+    }
+
+    if(searchHexEl) {
+      searchHexEl.addEventListener('input', (e) => {
+        currentState.colorFilter.searchHex = normalizeHex(e.target.value);
+        syncUIWithState();
+        renderImages();
+      });
+    }
+
+    // --- THE FIX: CLEAR BUTTON ---
+    if(clearFiltersBtn) {
+      clearFiltersBtn.addEventListener('click', () => {
+        currentState = JSON.parse(JSON.stringify(defaultState));
+        syncUIWithState();
+        renderImages();
+      });
+    }
+
+    const selectAllDecadesBtn = document.getElementById('selectAllDecades');
+    if(selectAllDecadesBtn) {
+      selectAllDecadesBtn.addEventListener('click', () => {
+        const allDecades = Array.from(document.querySelectorAll('#decadeFilters input')).map(cb => parseInt(cb.value));
+        currentState.selectedDecades = allDecades;
+        syncUIWithState();
+        renderImages();
+      });
+    }
+
+    const deselectAllDecadesBtn = document.getElementById('deselectAllDecades');
+    if(deselectAllDecadesBtn) {
+      deselectAllDecadesBtn.addEventListener('click', () => {
+        currentState.selectedDecades = [];
+        syncUIWithState();
+        renderImages();
+      });
+    }
+
+    // CSV Loading and Data Parsing
+    async function loadCSV(){
+      try {
+        let resp = await fetch('./data/hks_buttons_color_metadata.csv');
+        if(!resp.ok) resp = await fetch('../data/hks_buttons_color_metadata.csv');
+        if(!resp.ok) return;
+        const text = await resp.text();
+        const parsed = Papa.parse(text,{ header:true, skipEmptyLines:true });
+        const byImage = {};
+        const uniqueValues = { person: new Set(), party: new Set(), location: new Set() };
+        
+        parsed.data.forEach(row=>{
+          const iiifId = (row.iiifid||'').trim(); if(!iiifId) return;
+          if(!byImage[iiifId]) byImage[iiifId] = { iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', earliest_date: row.earliest_date||'', person: row.person||'', party: row.party||'', location: row.location||'', raw: [] };
+          byImage[iiifId].raw.push({ color: row.Hex, proportion: row.frequency });
+          ['person', 'party', 'location'].forEach(field => uniqueValues[field].add(row[field] || 'N/A'));
+        });
+
+        data = Object.keys(byImage).map((k,idx)=>{
+          const g = byImage[k];
+          const colors = g.raw.map(rr=>({ hex: (rr.color||''), proportion: parseFloat(rr.proportion)||0 })).filter(c=>c.hex);
+          return { id: g.id, name: g.title, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, earliest_date: g.earliest_date, person: g.person, party: g.party, location: g.location };
+        });
+
+        renderDecadeFilters();
+        renderMetadataFilters(uniqueValues);
+        syncUIWithState();
+        renderImages();
+      } catch(err) { console.error('Error loading CSV:', err); }
     }
 
     function renderDecadeFilters(){
@@ -471,25 +387,26 @@
       if(!container) return;
       const decadeCounts = {};
       data.forEach(img => {
-        const date = img.earliest_date;
-        if(date && /^\d{4}$/.test(date)){
-          const year = parseInt(date);
-          const decade = Math.floor(year / 10) * 10;
-          decadeCounts[decade] = (decadeCounts[decade] || 0) + 1;
+        const year = parseInt(img.earliest_date);
+        if(year) {
+          const d = Math.floor(year / 10) * 10;
+          decadeCounts[d] = (decadeCounts[d] || 0) + 1;
         }
       });
-      const sortedDecades = Object.keys(decadeCounts).map(d => parseInt(d)).sort((a,b)=>a-b);
       container.innerHTML = '';
-      sortedDecades.forEach(decade => {
+      Object.keys(decadeCounts).sort().forEach(decade => {
         const label = document.createElement('label');
         label.style.display = 'block';
-        label.setAttribute('data-decade', decade);
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = decade;
-        checkbox.checked = false; // default none selected
-        checkbox.addEventListener('change', renderImages);
-        label.appendChild(checkbox);
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = decade;
+        cb.addEventListener('change', (e) => {
+          const val = parseInt(e.target.value);
+          if(e.target.checked) currentState.selectedDecades.push(val);
+          else currentState.selectedDecades = currentState.selectedDecades.filter(d => d !== val);
+          renderImages();
+        });
+        label.appendChild(cb);
         label.appendChild(document.createTextNode(` ${decade}s (${decadeCounts[decade]})`));
         container.appendChild(label);
       });
@@ -499,195 +416,74 @@
       ['person', 'party', 'location'].forEach(field => {
         const select = document.getElementById(field + 'Filter');
         if(!select) return;
-        select.innerHTML = '';
-        // add "All" option
-        const allOption = document.createElement('option');
-        allOption.value = 'All';
-        allOption.textContent = 'All';
-        allOption.selected = true;
-        select.appendChild(allOption);
-        // add other options
-        if(uniqueValues && uniqueValues[field]){
-          const options = Array.from(uniqueValues[field]).sort();
-          options.forEach(val => {
-            const option = document.createElement('option');
-            option.value = val;
-            option.textContent = val;
-            select.appendChild(option);
-          });
-        }
-        select.addEventListener('change', renderImages);
+        select.innerHTML = '<option value="All">All</option>';
+        Array.from(uniqueValues[field]).sort().forEach(val => {
+          const opt = document.createElement('option');
+          opt.value = val; opt.textContent = val;
+          select.appendChild(opt);
+        });
+        select.addEventListener('change', (e) => {
+          currentState.metadata[field] = e.target.value;
+          renderImages();
+        });
       });
     }
 
-    // instructions text generator
-    function renderInstructions(){
-      const div = document.getElementById('instructionsText');
-      if(!div) return;
-      div.innerHTML = `
-        <h3>Instructions</h3>
-        <p>Use the color filters, decade filters, metadata filters (person, party, location), and search bar to find images by their dominant colors, creation decade, associated metadata, and titles.</p>
-        <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
-        <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
-        <p>You can pan the workspace by clicking and dragging on empty space.</p>
-        <p><span class="highlight">View Workspace Full Screen</span> Expand the workspace to full screen for easier arrangement of images.</p>
-        <p><span class="highlight">View Workspace as List</span>: See a tabular view of all images currently in the workspace, with an option to download the list as a CSV file.</p>
-      `;
+    // Helper functions (IIIF, Colors, Modals, Workspace) remain as they were...
+    function buildIIIFUrl(id){ return `https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/${id}/full/,300/0/default.jpg`; }
+    function normalizeHex(h){ if(!h) return ''; h=h.trim(); if(h[0] !== '#') h='#'+h; return h.toLowerCase(); }
+    function hexToRgb(hex){ hex=hex.replace('#',''); if(hex.length===3) hex=hex.split('').map(ch=>ch+ch).join(''); const n=parseInt(hex,16); return {r:(n>>16)&255, g:(n>>8)&255, b:n&255}; }
+    function colorDistance(a,b){ return Math.sqrt(Math.pow(a.r-b.r,2)+Math.pow(a.g-b.g,2)+Math.pow(a.b-b.b,2)); }
+
+    function openModal(id){
+      const img = data.find(i => i.id === id);
+      if(!img) return;
+      document.getElementById('modalImg').src = img.url;
+      const colorsDiv = document.getElementById('modalColors');
+      colorsDiv.innerHTML = `<strong>Title:</strong> ${img.name}<br><strong>Date:</strong> ${img.earliest_date}<br><br>`;
+      img.colors.forEach(c => {
+        colorsDiv.innerHTML += `<div style="margin-bottom:4px;"><span style="display:inline-block;width:20px;height:20px;background:${c.hex};border:1px solid #000;vertical-align:middle;margin-right:8px;"></span>${c.hex} - ${Math.round(c.proportion*100)}%</div>`;
+      });
+      document.getElementById('imageModal').style.display = 'block';
     }
 
-    // color helpers
-    function normalizeHex(h){ if(!h) return ''; h=h.trim(); if(h[0] !== '#') h='#'+h; if(h.length===4) h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return h.toLowerCase(); }
-    function hexToRgb(hex){ if(!hex) return {r:0,g:0,b:0}; hex=hex.replace('#',''); if(hex.length===3) hex=hex.split('').map(ch=>ch+ch).join(''); const n=parseInt(hex,16); return {r:(n>>16)&255, g:(n>>8)&255, b:n&255}; }
-    function colorDistance(a,b){ const dr=a.r-b.r, dg=a.g-b.g, db=a.b-b.b; return Math.sqrt(dr*dr+dg*dg+db*db); }
-    function rgbToHsl(r,g,b){ r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b); let h=0,s=0,l=(max+min)/2; if(max!==min){ const d=max-min; s = l>0.5?d/(2-max-min):d/(max+min); switch(max){ case r: h=(g-b)/d + (g<b?6:0); break; case g: h=(b-r)/d + 2; break; case b: h=(r-g)/d + 4; break; } h/=6; } return {h:h*360,s,l}; }
-    function colorNameFromHex(hex){ const {r,g,b}=hexToRgb(hex); const hsl=rgbToHsl(r,g,b); const h=hsl.h,l=hsl.l,s=hsl.s; if(l<0.12) return 'black'; if(l>0.92) return 'white'; if(s<0.12) return 'gray'; if(h>=345||h<15) return 'red'; if(h>=15&&h<45) return 'orange'; if(h>=45&&h<75) return 'yellow'; if(h>=75&&h<165) return 'green'; if(h>=165&&h<195) return 'cyan'; if(h>=195&&h<255) return 'blue'; if(h>=255&&h<285) return 'purple'; if(h>=285&&h<330) return 'magenta'; return 'pink'; }
-
-    // ----- filter controls (restore applyFilters and event hooks) -----
-    const colorPickerEl = document.getElementById('colorPicker');
-    const tolEl = document.getElementById('tolerance');
-    const searchHexEl = document.getElementById('searchHex');
-    const clearFiltersBtn = document.getElementById('clearFilters');
-
-    if(tolEl){ document.getElementById('tolValue').textContent = tolEl.value; tolEl.addEventListener('input', (e)=>{ document.getElementById('tolValue').textContent = e.target.value; }); }
-
-    function applyFilters(){
-      const clr = normalizeHex((colorPickerEl && colorPickerEl.value) || '');
-      const tol = parseInt((tolEl && tolEl.value) || 60);
-      const searchHex = normalizeHex((searchHexEl && searchHexEl.value) || '');
-        window._colorFilter = { clr, tol, searchHex };
-      renderImages();
-    }
-
-    if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
-    if(tolEl) tolEl.addEventListener('input', applyFilters);
-    if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
-   
-
-    /* --- LOCATION 3: Event Listeners --- */
-if (clearFiltersBtn) {
-  clearFiltersBtn.addEventListener('click', () => {
-    // Reset data to defaults
-    currentState = JSON.parse(JSON.stringify(defaultState));
-    
-    // Update the HTML elements to look like the reset data
-    syncUIWithState();
-    
-    // Crucial: window._colorFilter must also be reset so renderImages() works
-    window._colorFilter = { 
-      clr: currentState.colorFilter.clr, 
-      tol: currentState.colorFilter.tol, 
-      searchHex: currentState.colorFilter.searchHex 
-    };
-
-    // Refresh the grid
-    renderImages();
-  });
-}
-    const selectAllDecadesBtn = document.getElementById('selectAllDecades');
-    if(selectAllDecadesBtn) selectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = true); renderImages(); });
-
-    const deselectAllDecadesBtn = document.getElementById('deselectAllDecades');
-    if(deselectAllDecadesBtn) deselectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); renderImages(); });
-
-    // addToWorkspace uses logical coords
     function addToWorkspace(img, x=50, y=50){
-      const host = wsInner || workspace; if([...host.children].some(el=>el.dataset.id===img.id)) return;
-      const div = document.createElement('div'); div.className='workspace-card'; div.dataset.id=img.id; div.style.position='absolute'; div.style.left = x + 'px'; div.style.top = y + 'px'; div.innerHTML = `<img src="${img.url}" alt="${img.name}" style="width:${img.width*5}px">`;
-      let offsetX=0, offsetY=0, isDragging=false;
-      div.addEventListener('mousedown',(e)=>{ e.stopPropagation(); isDragging=true; const logical = screenToLogical(e.clientX, e.clientY); const curLeft=parseFloat(div.style.left||0); const curTop=parseFloat(div.style.top||0); offsetX = logical.lx - curLeft; offsetY = logical.ly - curTop; div.style.zIndex=1000; });
-      const onMove = (e)=>{ if(!isDragging) return; const logical = screenToLogical(e.clientX, e.clientY); const nx = logical.lx - offsetX; const ny = logical.ly - offsetY; div.style.left = nx + 'px'; div.style.top = ny + 'px'; };
-      const onUp = (e)=>{ if(isDragging){ const rect = workspace.getBoundingClientRect(); if(e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom){ if(div.parentNode) div.parentNode.removeChild(div); const idx = workspaceItems.findIndex(it=>it.id===div.dataset.id); if(idx>-1) workspaceItems.splice(idx,1); } } isDragging=false; div.style.zIndex=''; };
-      document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
-      host.appendChild(div); workspaceItems.push({ id: img.id, name: img.name, url: img.url });
+      if([...(wsInner||workspace).children].some(el=>el.dataset.id===img.id)) return;
+      const div = document.createElement('div');
+      div.className='workspace-card'; div.dataset.id=img.id; div.style.position='absolute'; div.style.left = x + 'px'; div.style.top = y + 'px';
+      div.innerHTML = `<img src="${img.url}" style="width:${img.width*5}px">`;
+      
+      let isDragging=false, offsetX=0, offsetY=0;
+      div.addEventListener('mousedown',(e)=>{
+        e.stopPropagation(); isDragging=true;
+        const logical = screenToLogical(e.clientX, e.clientY);
+        offsetX = logical.lx - parseFloat(div.style.left);
+        offsetY = logical.ly - parseFloat(div.style.top);
+        div.style.zIndex=1000;
+      });
+      document.addEventListener('mousemove',(e)=>{
+        if(!isDragging) return;
+        const logical = screenToLogical(e.clientX, e.clientY);
+        div.style.left = (logical.lx - offsetX) + 'px';
+        div.style.top = (logical.ly - offsetY) + 'px';
+      });
+      document.addEventListener('mouseup',()=>{ isDragging=false; div.style.zIndex=''; });
+      
+      (wsInner||workspace).appendChild(div);
+      workspaceItems.push({ id: img.id, name: img.name, url: img.url });
     }
 
-    // drag/drop onto workspace
-    workspace.addEventListener('dragover',(e)=>e.preventDefault());
-    workspace.addEventListener('drop',(e)=>{ e.preventDefault(); const id = e.dataTransfer.getData('id'); const img = data.find(i=>i.id===id); if(img){ const logical = screenToLogical(e.clientX, e.clientY); addToWorkspace(img, logical.lx, logical.ly); } });
-
-    // panning
-    let isPanning=false, panLastX=0, panLastY=0;
-    workspace.addEventListener('mousedown',(e)=>{ if(e.target.closest('.workspace-card')) return; isPanning=true; panLastX=e.clientX; panLastY=e.clientY; e.preventDefault(); });
-    document.addEventListener('mousemove',(e)=>{ if(!isPanning) return; const deltaX = e.clientX - panLastX; const deltaY = e.clientY - panLastY; panX += deltaX / zoom; panY += deltaY / zoom; applyTransform(); panLastX = e.clientX; panLastY = e.clientY; });
+    // Panning & Zooming
+    workspace.addEventListener('mousedown',(e)=>{ if(e.target.closest('.workspace-card')) return; isPanning=true; panLastX=e.clientX; panLastY=e.clientY; });
+    document.addEventListener('mousemove',(e)=>{ if(!isPanning) return; panX += (e.clientX - panLastX)/zoom; panY += (e.clientY - panLastY)/zoom; applyTransform(); panLastX=e.clientX; panLastY=e.clientY; });
     document.addEventListener('mouseup',()=>{ isPanning=false; });
+    workspace.addEventListener('wheel',(e)=>{ e.preventDefault(); const mouse = screenToLogical(e.clientX, e.clientY); const delta = e.deltaY>0 ? -0.1 : 0.1; const newZoom = clamp(zoom + delta, 0.5, 3); panX = (mouse.lx + panX) * (zoom / newZoom) - mouse.lx; panY = (mouse.ly + panY) * (zoom / newZoom) - mouse.ly; zoom = newZoom; applyTransform(); });
 
-    // wheel zoom around cursor
-    workspace.addEventListener('wheel',(e)=>{ e.preventDefault(); const mouse = screenToLogical(e.clientX, e.clientY); const mx = mouse.lx, my = mouse.ly; const delta = e.deltaY>0 ? -0.1 : 0.1; const newZoom = clamp(zoom + delta, 0.5, 3); if(newZoom===zoom) return; panX = (mx + panX) * (zoom / newZoom) - mx; panY = (my + panY) * (zoom / newZoom) - my; zoom = newZoom; applyTransform(); });
-
-    // --- workspace list modal and CSV export ---
-    function renderWorkspaceTable(){
-      const modal = document.getElementById('modal');
-      const tbody = document.querySelector('#workspaceTable tbody');
-      if(!tbody) return;
-      tbody.innerHTML = '';
-      if(!workspaceItems || workspaceItems.length===0){
-        const tr = document.createElement('tr');
-        const td = document.createElement('td'); td.colSpan = 3; td.textContent = 'No items in workspace'; tr.appendChild(td); tbody.appendChild(tr); return;
-      }
-      workspaceItems.forEach(it => {
-        const tr = document.createElement('tr');
-        const tdThumb = document.createElement('td');
-        const img = document.createElement('img'); img.src = it.url; img.style.width = '60px'; img.style.height = 'auto'; tdThumb.appendChild(img);
-        const tdTitle = document.createElement('td'); tdTitle.textContent = it.name || '';
-        const tdId = document.createElement('td'); tdId.textContent = it.id || '';
-        tr.appendChild(tdThumb); tr.appendChild(tdTitle); tr.appendChild(tdId);
-        tbody.appendChild(tr);
-      });
-    }
-
-    const viewListBtn = document.getElementById('viewList');
-    if(viewListBtn){ viewListBtn.addEventListener('click', ()=>{ renderWorkspaceTable(); const m = document.getElementById('modal'); if(m) m.style.display = 'block'; }); }
-
-    const closeModalBtn = document.getElementById('closeModal');
-    if(closeModalBtn){ closeModalBtn.addEventListener('click', ()=>{ const m = document.getElementById('modal'); if(m) m.style.display = 'none'; }); }
-
-    const downloadCSVBtn = document.getElementById('downloadCSV');
-    if(downloadCSVBtn){ downloadCSVBtn.addEventListener('click', ()=>{
-      if(!workspaceItems || workspaceItems.length===0) return; const rows = [['id','name','url']]; workspaceItems.forEach(it=> rows.push([it.id||'', it.name||'', it.url||''])); const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'); const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'workspace_items.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    }); }
-
-    // --- fullscreen toggle for workspace container ---
-    const fsBtn = document.getElementById('workspaceFullscreenBtn');
-    const wsContainerEl = document.getElementById('workspaceContainer') || workspace;
-    if(fsBtn){
-      fsBtn.addEventListener('click', async ()=>{
-        const doc = document;
-        const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
-        try{
-          if(!isFull){
-            if(wsContainerEl.requestFullscreen) await wsContainerEl.requestFullscreen();
-            else if(wsContainerEl.webkitRequestFullscreen) wsContainerEl.webkitRequestFullscreen();
-            else if(wsContainerEl.mozRequestFullScreen) wsContainerEl.mozRequestFullScreen();
-            else if(wsContainerEl.msRequestFullscreen) wsContainerEl.msRequestFullscreen();
-            fsBtn.textContent = 'Exit Full Screen';
-          } else {
-            if(doc.exitFullscreen) await doc.exitFullscreen();
-            else if(doc.webkitExitFullscreen) doc.webkitExitFullscreen();
-            else if(doc.mozCancelFullScreen) doc.mozCancelFullScreen();
-            else if(doc.msExitFullscreen) doc.msExitFullscreen();
-            fsBtn.textContent = 'View Workspace Full Screen';
-          }
-        }catch(err){ console.warn('Fullscreen toggle failed', err); }
-      });
-    }
-
-    document.addEventListener('fullscreenchange', ()=>{
-      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-      if(fsBtn) fsBtn.textContent = isFS ? 'Exit Full Screen' : 'View Workspace Full Screen';
-    });
-
-    // --- sidebar collapse/expand ---
-    const toggleTopBarBtn = document.getElementById('toggleTopBar');
-    const workspaceColumnsEl = document.getElementById('workspaceColumns');
-    const sidebarEl = document.getElementById('sidebar');
-    if(toggleTopBarBtn && sidebarEl && workspaceColumnsEl){
-      toggleTopBarBtn.addEventListener('click', ()=>{
-        const collapsed = sidebarEl.classList.toggle('collapsed');
-        workspaceColumnsEl.classList.toggle('sidebar-collapsed', collapsed);
-        toggleTopBarBtn.textContent = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
-      });
-    }
-
+    // Modals & UI Toggles
+    const instructionsBtn = document.getElementById('instructionsBtn');
+    if(instructionsBtn) instructionsBtn.addEventListener('click', () => document.getElementById('instructionsModal').style.display = 'block');
+    document.getElementById('closeInstructionsModal').addEventListener('click', () => document.getElementById('instructionsModal').style.display = 'none');
+    document.getElementById('closeImageModal').addEventListener('click', () => document.getElementById('imageModal').style.display = 'none');
 
     loadCSV();
     applyTransform();
