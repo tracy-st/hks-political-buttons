@@ -47,8 +47,12 @@
             </div>
           </div>
           <div class="options">
-            <h2>Search Titles</h2>
-            <input id="search" placeholder="Search titles..." class="search-bar">
+            <h2>Filter by Decade</h2>
+            <div class="decade-filters" id="decadeFilters"></div>
+            <div>
+              <button id="selectAllDecades">Select All</button>
+              <button id="deselectAllDecades">Deselect All</button>
+            </div>
           </div>
           <div class="view-bar">
               <button id="viewList">View Workspace as List</button>
@@ -163,22 +167,38 @@
       const byImage = {};
       parsed.data.forEach(row=>{
         const iiifId = (row.iiifid||'').trim(); if(!iiifId) return;
-        if(!byImage[iiifId]) byImage[iiifId] = { iiifId: iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', raw: [] };
+        if(!byImage[iiifId]) byImage[iiifId] = { iiifId: iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', earliest_date: row.earliest_date||'', raw: [] };
         // use Hex header for color
         byImage[iiifId].raw.push({ color: row.Hex, proportion: row.frequency });
       });
       data = Object.keys(byImage).map((k,idx)=>{
         const g = byImage[k]; g.raw.sort((a,b)=> (parseFloat(b.proportion)||0) - (parseFloat(a.proportion)||0));
         const colors = g.raw.map(rr=>({ hex: (rr.color||''), proportion: parseFloat(rr.proportion)||0 })).filter(c=>c.hex);
-        return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, raw:g.raw };
+        return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, earliest_date: g.earliest_date, raw:g.raw };
       });
+      renderDecadeFilters();
       renderImages();
     }
 
     function renderImages(){
       const cf = window._colorFilter || {};
+      const selectedDecades = Array.from(document.querySelectorAll('#decadeFilters input:checked')).map(cb => parseInt(cb.value));
       let images = data.filter(i => {
         if(searchTerm && !(i.name||'').toLowerCase().includes(searchTerm)) return false;
+        
+        // decade filter
+        if(selectedDecades.length > 0){
+          const date = i.earliest_date;
+          if(date && /^\d{4}$/.test(date)){
+            const year = parseInt(date);
+            const decade = Math.floor(year / 10) * 10;
+            if(!selectedDecades.includes(decade)) return false;
+          } else {
+            // if no date, exclude if any decades selected
+            return false;
+          }
+        }
+        
         // if no color-based filter active, keep all
         if(!cf.clr && !cf.searchHex) return true;
 
@@ -220,6 +240,24 @@
           return score(b) - score(a);
         });
       }
+
+      // update decade counts based on filtered images
+      const filteredDecadeCounts = {};
+      images.forEach(img => {
+        const date = img.earliest_date;
+        if(date && /^\d{4}$/.test(date)){
+          const year = parseInt(date);
+          const decade = Math.floor(year / 10) * 10;
+          filteredDecadeCounts[decade] = (filteredDecadeCounts[decade] || 0) + 1;
+        }
+      });
+      document.querySelectorAll('#decadeFilters label').forEach(label => {
+        const decade = parseInt(label.getAttribute('data-decade'));
+        const count = filteredDecadeCounts[decade] || 0;
+        const checkbox = label.querySelector('input');
+        const textNode = label.lastChild;
+        textNode.textContent = ` ${decade}s (${count})`;
+      });
 
       imageGrid.innerHTML = '';
       
@@ -279,13 +317,42 @@
       modal.style.display = 'block';
     }
 
+    function renderDecadeFilters(){
+      const container = document.getElementById('decadeFilters');
+      if(!container) return;
+      const decadeCounts = {};
+      data.forEach(img => {
+        const date = img.earliest_date;
+        if(date && /^\d{4}$/.test(date)){
+          const year = parseInt(date);
+          const decade = Math.floor(year / 10) * 10;
+          decadeCounts[decade] = (decadeCounts[decade] || 0) + 1;
+        }
+      });
+      const sortedDecades = Object.keys(decadeCounts).map(d => parseInt(d)).sort((a,b)=>a-b);
+      container.innerHTML = '';
+      sortedDecades.forEach(decade => {
+        const label = document.createElement('label');
+        label.style.display = 'block';
+        label.setAttribute('data-decade', decade);
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = decade;
+        checkbox.checked = false; // default none selected
+        checkbox.addEventListener('change', renderImages);
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(` ${decade}s (${decadeCounts[decade]})`));
+        container.appendChild(label);
+      });
+    }
+
     // instructions text generator
     function renderInstructions(){
       const div = document.getElementById('instructionsText');
       if(!div) return;
       div.innerHTML = `
         <h3>Instructions</h3>
-        <p>Use the color filters and search bar to find images by their dominant colors and titles.</p>
+        <p>Use the color filters, decade filters, and search bar to find images by their dominant colors, creation decade, and titles.</p>
         <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
         <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
         <p>You can pan the workspace by clicking and dragging on empty space.</p>
@@ -320,7 +387,13 @@
     if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
     if(tolEl) tolEl.addEventListener('input', applyFilters);
     if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
-    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } applyFilters(); });
+    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); applyFilters(); });
+
+    const selectAllDecadesBtn = document.getElementById('selectAllDecades');
+    if(selectAllDecadesBtn) selectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = true); renderImages(); });
+
+    const deselectAllDecadesBtn = document.getElementById('deselectAllDecades');
+    if(deselectAllDecadesBtn) deselectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); renderImages(); });
 
     // addToWorkspace uses logical coords
     function addToWorkspace(img, x=50, y=50){
