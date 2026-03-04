@@ -17,6 +17,7 @@
       <div class="right-controls">
           <button id="toggleTopBar">Collapse sidebar</button>
                <h2>Workspace</h2>
+             <button id="downloadWorkspaceImg">Download Workspace as Image</button> 
       </div>
 
       <div class="workspace" id="workspace"> 
@@ -31,7 +32,9 @@
                 <div class="view-bar">
               <button id="viewList">View Workspace as List</button>
               <button id="workspaceFullscreenBtn">View Workspace Full Screen</button>
+           
               <button id="instructionsBtn">Instructions</button>
+
           </div>
     </div>
      <div id="sidebar" class="sticky">
@@ -107,6 +110,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
    const imageGrid = document.getElementById('imageGrid');
     const workspace = document.getElementById('workspace');
@@ -545,6 +549,48 @@
       const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
       if(fsBtn) fsBtn.textContent = isFS ? 'Exit Full Screen' : 'View Workspace Full Screen';
     });
+
+  // --- DOWNLOAD FULL-SIZE WORKSPACE ---
+const downloadImgBtn = document.getElementById('downloadWorkspaceImg');
+
+if (downloadImgBtn) {
+  downloadImgBtn.addEventListener('click', () => {
+    const target = document.getElementById('workspace');
+    
+    // 1. Save current transform state so the user doesn't lose their place
+    const originalTransform = target.style.transform;
+    
+    // 2. Reset transform temporarily so html2canvas sees the full 1200x800 area
+    target.style.transform = "none";
+
+    html2canvas(target, {
+      backgroundColor: "#ffffff", 
+      useCORS: true,              // Crucial for loading IIIF images into the canvas
+      scale: 2,                   // Higher scale = sharper image (2x resolution)
+      width: 1200,                // Force the width of your logical canvas
+      height: 800,                // Force the height of your logical canvas
+      logging: false,
+      // Ensure we capture items even if they are scrolled/panned out of view
+      scrollX: 0,
+      scrollY: 0,
+      x: 0,
+      y: 0
+    }).then(canvas => {
+      // 3. Restore the user's zoom/pan immediately
+      target.style.transform = originalTransform;
+
+      // 4. Trigger the download
+      const link = document.createElement('a');
+      link.download = `workspace-export-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }).catch(err => {
+      // Restore transform even if it fails
+      target.style.transform = originalTransform;
+      console.error("Capture failed:", err);
+    });
+  });
+}
 
     // --- sidebar collapse/expand ---
     const toggleTopBarBtn = document.getElementById('toggleTopBar');
