@@ -47,7 +47,7 @@
             </div>
           </div>
           <div class="options">
-            <h2>Filter by Decade</h2>
+            <h2>Show only:</h2>
             <div class="decade-filters" id="decadeFilters"></div>
             <div>
               <button id="selectAllDecades">Select All</button>
@@ -303,6 +303,47 @@
       const colorsDiv = document.getElementById('modalColors');
       modalImg.src = img.url;
       colorsDiv.innerHTML = '';
+      
+      // add metadata header
+      const metadataDiv = document.createElement('div');
+      metadataDiv.style.marginBottom = '12px';
+      metadataDiv.style.paddingBottom = '12px';
+      metadataDiv.style.borderBottom = '1px solid #ddd';
+      
+      const titleRow = document.createElement('div');
+      titleRow.style.marginBottom = '6px';
+      titleRow.innerHTML = `<strong>Title:</strong> ${img.name || 'N/A'}`;
+      metadataDiv.appendChild(titleRow);
+      
+      const dateRow = document.createElement('div');
+      dateRow.style.marginBottom = '6px';
+      dateRow.innerHTML = `<strong>Earliest Date:</strong> ${img.earliest_date || 'N/A'}`;
+      metadataDiv.appendChild(dateRow);
+      
+      const personRow = document.createElement('div');
+      personRow.style.marginBottom = '6px';
+      personRow.innerHTML = `<strong>Person:</strong> ${img.person || 'N/A'}`;
+      metadataDiv.appendChild(personRow);
+      
+      const partyRow = document.createElement('div');
+      partyRow.style.marginBottom = '6px';
+      partyRow.innerHTML = `<strong>Party:</strong> ${img.party || 'N/A'}`;
+      metadataDiv.appendChild(partyRow);
+      
+      const locationRow = document.createElement('div');
+      locationRow.style.marginBottom = '6px';
+      locationRow.innerHTML = `<strong>Location:</strong> ${img.location || 'N/A'}`;
+      metadataDiv.appendChild(locationRow);
+      
+      colorsDiv.appendChild(metadataDiv);
+      
+      // add colors header
+      const colorsHeader = document.createElement('div');
+      colorsHeader.style.marginBottom = '6px';
+      colorsHeader.style.fontWeight = 'bold';
+      colorsHeader.textContent = 'Colors:';
+      colorsDiv.appendChild(colorsHeader);
+      
       // show swatches and details
       img.colors.forEach(c=>{
         const row = document.createElement('div');
