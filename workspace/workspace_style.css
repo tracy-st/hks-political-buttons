@@ -103,8 +103,8 @@
 
     .right-controls {
       display: flex;
-      justify-content: space-between;
-      align-items: end
+      flex-direction: column;
+      align-items: flex-end;
     }
     .search-bar {
       width: 80%;
@@ -248,17 +248,21 @@
 
 
 
+
+
     /* Collapsed sidebar layout: hide sidebar and allow workspace to fill */
     .content-with-sidebars.sidebar-collapsed > *:nth-child(1) {
       width: 100% !important;
       max-width: 100% !important;
     }
+       /* 
     .content-with-sidebars.sidebar-collapsed > *:nth-child(2) {
       width: 0 !important;
       max-width: 0 !important;
       min-width: 0 !important;
       overflow: visible !important;
     }
+      */
 
     /* When the outer #sidebar has .collapsed, completely hide the container but keep toggle button visible via absolute positioning */
     #sidebar.collapsed {
