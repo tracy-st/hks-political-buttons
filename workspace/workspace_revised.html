@@ -54,6 +54,18 @@
               <button id="deselectAllDecades">Deselect All</button>
             </div>
           </div>
+          <div class="options">
+            <h2>Filter by Metadata</h2>
+            <div class="metadata-filters">
+              <label>Person: <select id="personFilter"></select></label><br>
+              <label>Party: <select id="partyFilter"></select></label><br>
+              <label>Location: <select id="locationFilter"></select></label><br>
+            </div>
+          </div>
+          <div class="options">
+            <h2>Search Titles</h2>
+            <input id="search" placeholder="Search titles..." class="search-bar">
+          </div>
           <div class="view-bar">
               <button id="viewList">View Workspace as List</button>
               <button id="workspaceFullscreenBtn">View Workspace Full Screen</button>
@@ -161,28 +173,66 @@
     }
 
     async function loadCSV(){
-      const resp = await fetch('../data/hks_buttons_color_metadata.csv');
-      const text = await resp.text();
-      const parsed = Papa.parse(text,{ header:true, skipEmptyLines:true });
-      const byImage = {};
-      parsed.data.forEach(row=>{
-        const iiifId = (row.iiifid||'').trim(); if(!iiifId) return;
-        if(!byImage[iiifId]) byImage[iiifId] = { iiifId: iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', earliest_date: row.earliest_date||'', raw: [] };
-        // use Hex header for color
-        byImage[iiifId].raw.push({ color: row.Hex, proportion: row.frequency });
-      });
-      data = Object.keys(byImage).map((k,idx)=>{
-        const g = byImage[k]; g.raw.sort((a,b)=> (parseFloat(b.proportion)||0) - (parseFloat(a.proportion)||0));
-        const colors = g.raw.map(rr=>({ hex: (rr.color||''), proportion: parseFloat(rr.proportion)||0 })).filter(c=>c.hex);
-        return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, earliest_date: g.earliest_date, raw:g.raw };
-      });
-      renderDecadeFilters();
-      renderImages();
+      try {
+        console.log('Attempting to load CSV...');
+        // Try relative to current directory first
+        let resp = await fetch('../data/hks_buttons_color_metadata.csv');
+        if(!resp.ok) {
+          console.log('Path ../data/ failed with status:', resp.status, 'trying ./data/');
+          resp = await fetch('./data/hks_buttons_color_metadata.csv');
+        }
+        if(!resp.ok) {
+          console.log('Path ./data/ failed with status:', resp.status, 'trying /data/');
+          resp = await fetch('/data/hks_buttons_color_metadata.csv');
+        }
+        if(!resp.ok) {
+          console.error('Failed to load CSV from all paths. Final status:', resp.status);
+          return;
+        }
+        console.log('CSV loaded successfully');
+        const text = await resp.text();
+        const parsed = Papa.parse(text,{ header:true, skipEmptyLines:true });
+        console.log('CSV parsed, rows:', parsed.data.length);
+        const byImage = {};
+        const uniqueValues = { person: new Set(), party: new Set(), location: new Set() };
+        parsed.data.forEach(row=>{
+          const iiifId = (row.iiifid||'').trim(); if(!iiifId) return;
+          if(!byImage[iiifId]) byImage[iiifId] = { iiifId: iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', earliest_date: row.earliest_date||'', person: row.person||'', party: row.party||'', location: row.location||'', raw: [] };
+          // use Hex header for color
+          byImage[iiifId].raw.push({ color: row.Hex, proportion: row.frequency });
+          // collect unique values
+          ['person', 'party', 'location'].forEach(field => {
+            const val = row[field] || '';
+            uniqueValues[field].add(val || 'N/A');
+          });
+        });
+        data = Object.keys(byImage).map((k,idx)=>{
+          const g = byImage[k]; g.raw.sort((a,b)=> (parseFloat(b.proportion)||0) - (parseFloat(a.proportion)||0));
+          const colors = g.raw.map(rr=>({ hex: (rr.color||''), proportion: parseFloat(rr.proportion)||0 })).filter(c=>c.hex);
+          return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, earliest_date: g.earliest_date, person: g.person, party: g.party, location: g.location, raw:g.raw };
+        });
+        console.log('Loaded', data.length, 'unique images');
+        renderDecadeFilters();
+        renderMetadataFilters(uniqueValues);
+        renderImages();
+      } catch(err) {
+        console.error('Error loading CSV:', err);
+      }
     }
 
     function renderImages(){
       const cf = window._colorFilter || {};
       const selectedDecades = Array.from(document.querySelectorAll('#decadeFilters input:checked')).map(cb => parseInt(cb.value));
+      
+      const personFilter = document.getElementById('personFilter');
+      const partyFilter = document.getElementById('partyFilter');
+      const locationFilter = document.getElementById('locationFilter');
+      const selectedPersons = personFilter ? personFilter.value : 'All';
+      const selectedParties = partyFilter ? partyFilter.value : 'All';
+      const selectedLocations = locationFilter ? locationFilter.value : 'All';
+      
+      console.log('renderImages called. data.length:', data.length, 'selectedDecades:', selectedDecades.length);
+      
       let images = data.filter(i => {
         if(searchTerm && !(i.name||'').toLowerCase().includes(searchTerm)) return false;
         
@@ -197,6 +247,20 @@
             // if no date, exclude if any decades selected
             return false;
           }
+        }
+        
+        // metadata filters
+        if(selectedPersons !== 'All'){
+          const val = i.person || 'N/A';
+          if(val !== selectedPersons) return false;
+        }
+        if(selectedParties !== 'All'){
+          const val = i.party || 'N/A';
+          if(val !== selectedParties) return false;
+        }
+        if(selectedLocations !== 'All'){
+          const val = i.location || 'N/A';
+          if(val !== selectedLocations) return false;
         }
         
         // if no color-based filter active, keep all
@@ -259,6 +323,11 @@
         textNode.textContent = ` ${decade}s (${count})`;
       });
 
+      if(!imageGrid) {
+        console.error('imageGrid element not found');
+        return;
+      }
+      console.log('Filtered to', images.length, 'images');
       imageGrid.innerHTML = '';
       
       // update result count
@@ -387,13 +456,38 @@
       });
     }
 
+    function renderMetadataFilters(uniqueValues){
+      ['person', 'party', 'location'].forEach(field => {
+        const select = document.getElementById(field + 'Filter');
+        if(!select) return;
+        select.innerHTML = '';
+        // add "All" option
+        const allOption = document.createElement('option');
+        allOption.value = 'All';
+        allOption.textContent = 'All';
+        allOption.selected = true;
+        select.appendChild(allOption);
+        // add other options
+        if(uniqueValues && uniqueValues[field]){
+          const options = Array.from(uniqueValues[field]).sort();
+          options.forEach(val => {
+            const option = document.createElement('option');
+            option.value = val;
+            option.textContent = val;
+            select.appendChild(option);
+          });
+        }
+        select.addEventListener('change', renderImages);
+      });
+    }
+
     // instructions text generator
     function renderInstructions(){
       const div = document.getElementById('instructionsText');
       if(!div) return;
       div.innerHTML = `
         <h3>Instructions</h3>
-        <p>Use the color filters, decade filters, and search bar to find images by their dominant colors, creation decade, and titles.</p>
+        <p>Use the color filters, decade filters, metadata filters (person, party, location), and search bar to find images by their dominant colors, creation decade, associated metadata, and titles.</p>
         <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
         <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
         <p>You can pan the workspace by clicking and dragging on empty space.</p>
@@ -428,7 +522,7 @@
     if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
     if(tolEl) tolEl.addEventListener('input', applyFilters);
     if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
-    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); applyFilters(); });
+    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); ['personFilter', 'partyFilter', 'locationFilter'].forEach(id => { const sel = document.getElementById(id); if(sel) sel.value = 'All'; }); applyFilters(); });
 
     const selectAllDecadesBtn = document.getElementById('selectAllDecades');
     if(selectAllDecadesBtn) selectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = true); renderImages(); });
