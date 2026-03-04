@@ -36,7 +36,8 @@
             <div class="color-filters">
               <label>Primary Color: <input type="color" id="colorPicker" value="#ff0000"></label><br>
               <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
-              <label style="display:block; margin-top:6px;">Color Name: <input id="colorNameFilter" placeholder="e.g. red"></label><br>
+              
+                <!-- removed Color Name filter -->
               <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" placeholder="#rrggbb"></label>
               <div>
                 <button id="clearFilters">Clear</button>
@@ -146,14 +147,86 @@
 
     function renderImages(){
       const cf = window._colorFilter || {};
-      let images = data.filter(i => { if(searchTerm && !(i.name||'').toLowerCase().includes(searchTerm)) return false; if(!cf.clr && !cf.searchHex && !cf.colorName) return true; if(cf.searchHex){ let best=0; i.colors.forEach(c=>{ if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex))<=24) best = Math.max(best,c.proportion); }); return best>0; } if(cf.clr){ let best=0; i.colors.forEach(c=>{ if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr))<=cf.tol) best = Math.max(best,c.proportion); }); return best>0; } if(cf.colorName){ let best=0; i.colors.forEach(c=>{ if(colorNameFromHex(c.hex)===cf.colorName) best = Math.max(best,c.proportion); }); return best>0; } return true; });
+      let images = data.filter(i => {
+        if(searchTerm && !(i.name||'').toLowerCase().includes(searchTerm)) return false;
+        // if no color-based filter active, keep all
+        if(!cf.clr && !cf.searchHex) return true;
+
+        if(cf.searchHex){
+          let best = 0;
+          i.colors.forEach(c => {
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) <= 24){
+              best = Math.max(best, c.proportion);
+            }
+          });
+          return best > 0;
+        }
+
+        if(cf.clr){
+          let best = 0;
+          i.colors.forEach(c => {
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr)) <= cf.tol){
+              best = Math.max(best, c.proportion);
+            }
+          });
+          return best > 0;
+        }
+
+        return true;
+      });
+
       imageGrid.innerHTML = '';
-      images.forEach(img=>{
-        const card = document.createElement('div'); card.className='image-card'; card.draggable=true; card.ondragstart=(e)=>e.dataTransfer.setData('id',img.id); card.onclick=()=> addToWorkspace(img, 100,100);
+      images.forEach(img => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.draggable = true;
+        card.ondragstart = (e) => e.dataTransfer.setData('id', img.id);
+        card.onclick = () => addToWorkspace(img, 100, 100);
         const imgEl = document.createElement('img'); imgEl.src = img.url; imgEl.alt = img.name; card.appendChild(imgEl);
-        const nameDiv = document.createElement('div'); nameDiv.textContent = img.name; nameDiv.style.marginTop='6px'; card.appendChild(nameDiv);
+
+        // swatches row
+        const swatchesDiv = document.createElement('div');
+        swatchesDiv.className = 'swatches';
+        img.colors.slice(0,5).forEach(c => {
+          const s = document.createElement('span');
+          s.style.display = 'inline-block';
+          s.style.width = '18px';
+          s.style.height = '18px';
+          s.style.background = c.hex;
+          s.style.marginRight = '6px';
+          s.style.border = '1px solid #fff';
+          s.title = `${c.hex} — ${Math.round(c.proportion*100)}%`;
+          swatchesDiv.appendChild(s);
+        });
+        card.appendChild(swatchesDiv);
+
+        const nameDiv = document.createElement('div'); nameDiv.textContent = img.name; nameDiv.style.marginTop = '6px'; nameDiv.style.cursor = 'pointer';
+        nameDiv.addEventListener('click', (e)=>{ e.stopPropagation(); openModal(img.id); });
+        card.appendChild(nameDiv);
         imageGrid.appendChild(card);
       });
+    }
+
+    function openModal(id){
+      const img = data.find(i => i.id === id);
+      if(!img) return;
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('modalImg');
+      const colorsDiv = document.getElementById('modalColors');
+      modalImg.src = img.url;
+      colorsDiv.innerHTML = '';
+      // show swatches and details
+      img.colors.forEach(c=>{
+        const row = document.createElement('div');
+        row.style.marginBottom = '6px';
+        const sw = document.createElement('span');
+        sw.style.display='inline-block'; sw.style.width='24px'; sw.style.height='24px'; sw.style.background=c.hex; sw.style.border='1px solid #000'; sw.style.verticalAlign='middle'; sw.style.marginRight='8px';
+        row.appendChild(sw);
+        const txt = document.createElement('span'); txt.innerHTML = `<strong>${c.hex}</strong> — ${Math.round(c.proportion*100)}%`;
+        row.appendChild(txt);
+        colorsDiv.appendChild(row);
+      });
+      modal.style.display = 'block';
     }
 
     // color helpers
@@ -166,7 +239,6 @@
     // ----- filter controls (restore applyFilters and event hooks) -----
     const colorPickerEl = document.getElementById('colorPicker');
     const tolEl = document.getElementById('tolerance');
-    const colorNameEl = document.getElementById('colorNameFilter');
     const searchHexEl = document.getElementById('searchHex');
     const clearFiltersBtn = document.getElementById('clearFilters');
 
@@ -175,17 +247,15 @@
     function applyFilters(){
       const clr = normalizeHex((colorPickerEl && colorPickerEl.value) || '');
       const tol = parseInt((tolEl && tolEl.value) || 60);
-      const colorName = (colorNameEl && colorNameEl.value || '').toLowerCase();
       const searchHex = normalizeHex((searchHexEl && searchHexEl.value) || '');
-      window._colorFilter = { clr, tol, colorName, searchHex };
+        window._colorFilter = { clr, tol, searchHex };
       renderImages();
     }
 
     if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
     if(tolEl) tolEl.addEventListener('input', applyFilters);
-    if(colorNameEl) colorNameEl.addEventListener('input', applyFilters);
     if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
-    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(colorNameEl) colorNameEl.value=''; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } applyFilters(); });
+    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } applyFilters(); });
 
 
     // addToWorkspace uses logical coords
