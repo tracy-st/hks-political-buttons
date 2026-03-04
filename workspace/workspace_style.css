@@ -31,7 +31,7 @@
 
 /* columns */
 .content-with-sidebars > * {
-    width:100%;
+    max-width:50%;
     padding:1rem;
 }
 
@@ -65,7 +65,7 @@
 
 /* Keep the left workspace container and right sidebar pinned */
 #workspaceContainer.sticky,
-.sidebar.sticky {
+#sidebar.sticky {
   position: sticky;
   top: 20px;
   align-self: flex-start;
@@ -207,11 +207,11 @@
   user-select: none;
 }
 
-.workspace span {
-     font-family: "Public Sans", sans-serif;
+.workspace span, #workspaceInner span {
+     font-family: "Public Sans", serif;
   font-weight: 900;
   font-style: normal;
-    font-size: 60vh;
+    font-size: 600px;
     color: #31302e;
 
 }
