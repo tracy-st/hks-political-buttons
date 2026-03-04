@@ -349,6 +349,18 @@
       if(fsBtn) fsBtn.textContent = isFS ? 'Exit Full Screen' : 'View Workspace Full Screen';
     });
 
+    // --- sidebar collapse/expand ---
+    const toggleTopBarBtn = document.getElementById('toggleTopBar');
+    const workspaceColumnsEl = document.getElementById('workspaceColumns');
+    const sidebarEl = document.getElementById('sidebar');
+    if(toggleTopBarBtn && sidebarEl && workspaceColumnsEl){
+      toggleTopBarBtn.addEventListener('click', ()=>{
+        const collapsed = sidebarEl.classList.toggle('collapsed');
+        workspaceColumnsEl.classList.toggle('sidebar-collapsed', collapsed);
+        toggleTopBarBtn.textContent = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+      });
+    }
+
     loadCSV();
     applyTransform();
   </script>
