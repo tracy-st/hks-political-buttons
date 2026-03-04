@@ -111,9 +111,28 @@
     const imageGrid = document.getElementById('imageGrid');
     const workspace = document.getElementById('workspace');
     const wsInner = document.getElementById('workspaceInner');
+  
+    /* --- LOCATION 1: Variables Section --- */
     let data = [];
-    let searchTerm = '';
-    let workspaceItems = [];
+    let workspaceItems = [å];
+
+    // New Centralized State Object
+    const defaultState = {
+      searchTerm: '',
+      colorFilter: {
+        clr: '#272221',
+        tol: 60,
+        searchHex: ''
+      },
+      selectedDecades: [],
+      metadata: {
+        person: 'All',
+        party: 'All',
+        location: 'All'
+      }
+    };
+
+    let currentState = JSON.parse(JSON.stringify(defaultState));
 
     // logical pan/zoom state
     let zoom = 1;
@@ -172,6 +191,28 @@
       return `https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/${iiifId}/full/,300/0/default.jpg`;
     }
 
+            /* --- LOCATION 2: Utility Functions --- */
+    function syncUIWithState() {
+      if (searchInput) searchInput.value = currentState.searchTerm;
+      if (searchHexEl) searchHexEl.value = currentState.colorFilter.searchHex;
+      
+      if (colorPickerEl) colorPickerEl.value = currentState.colorFilter.clr;
+      if (tolEl) {
+        tolEl.value = currentState.colorFilter.tol;
+        const label = document.getElementById('tolValue');
+        if (label) label.textContent = currentState.colorFilter.tol;
+      }
+
+      document.querySelectorAll('#decadeFilters input').forEach(cb => {
+        cb.checked = currentState.selectedDecades.includes(parseInt(cb.value));
+      });
+
+      ['person', 'party', 'location'].forEach(field => {
+        const el = document.getElementById(field + 'Filter');
+        if (el) el.value = currentState.metadata[field];
+      });
+    }
+
     async function loadCSV(){
       try {
         console.log('Attempting to load CSV...');
@@ -221,16 +262,14 @@
     }
 
     function renderImages(){
-      const cf = window._colorFilter || {};
-      const selectedDecades = Array.from(document.querySelectorAll('#decadeFilters input:checked')).map(cb => parseInt(cb.value));
-      
-      const personFilter = document.getElementById('personFilter');
-      const partyFilter = document.getElementById('partyFilter');
-      const locationFilter = document.getElementById('locationFilter');
-      const selectedPersons = personFilter ? personFilter.value : 'All';
-      const selectedParties = partyFilter ? partyFilter.value : 'All';
-      const selectedLocations = locationFilter ? locationFilter.value : 'All';
-      
+  // Update these lines to look at the State object
+  const cf = window._colorFilter || {};
+  const selectedDecades = currentState.selectedDecades; 
+  const selectedPersons = currentState.metadata.person;
+  const selectedParties = currentState.metadata.party;
+  const selectedLocations = currentState.metadata.location;
+  const searchTerm = currentState.searchTerm;
+  
       console.log('renderImages called. data.length:', data.length, 'selectedDecades:', selectedDecades.length);
       
       let images = data.filter(i => {
@@ -522,8 +561,28 @@
     if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
     if(tolEl) tolEl.addEventListener('input', applyFilters);
     if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
-    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); ['personFilter', 'partyFilter', 'locationFilter'].forEach(id => { const sel = document.getElementById(id); if(sel) sel.value = 'All'; }); applyFilters(); });
+   
 
+    /* --- LOCATION 3: Event Listeners --- */
+if (clearFiltersBtn) {
+  clearFiltersBtn.addEventListener('click', () => {
+    // Reset data to defaults
+    currentState = JSON.parse(JSON.stringify(defaultState));
+    
+    // Update the HTML elements to look like the reset data
+    syncUIWithState();
+    
+    // Crucial: window._colorFilter must also be reset so renderImages() works
+    window._colorFilter = { 
+      clr: currentState.colorFilter.clr, 
+      tol: currentState.colorFilter.tol, 
+      searchHex: currentState.colorFilter.searchHex 
+    };
+
+    // Refresh the grid
+    renderImages();
+  });
+}
     const selectAllDecadesBtn = document.getElementById('selectAllDecades');
     if(selectAllDecadesBtn) selectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = true); renderImages(); });
 
@@ -628,6 +687,7 @@
         toggleTopBarBtn.textContent = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
       });
     }
+
 
     loadCSV();
     applyTransform();
