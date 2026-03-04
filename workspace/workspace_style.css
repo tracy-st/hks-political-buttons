@@ -101,12 +101,10 @@
   z-index: 1001;
 }
 
-    #toggleTopBar button {
-      align-self: flex-start;
-    }
     .right-controls {
       display: flex;
       justify-content: space-between;
+      align-items: end
     }
     .search-bar {
       width: 80%;
@@ -152,6 +150,11 @@
     button.active {
       background: #666;
       color: #fff;
+    }
+
+    #toggleTopBar button {
+      margin-bottom: 5px;
+      color: blue
     }
 
     .highlight {background-color: palegoldenrod;
