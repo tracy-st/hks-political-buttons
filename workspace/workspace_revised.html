@@ -130,6 +130,22 @@
     const searchInput = document.getElementById('search');
     if(searchInput) searchInput.addEventListener('input', (e)=>{ searchTerm = e.target.value.toLowerCase(); renderImages(); });
 
+    // instructions modal wiring
+    const instructionsBtn = document.getElementById('instructionsBtn');
+    const instructionsModal = document.getElementById('instructionsModal');
+    const closeInstructionsModal = document.getElementById('closeInstructionsModal');
+    if(instructionsBtn){
+      instructionsBtn.addEventListener('click', ()=>{
+        renderInstructions();
+        if(instructionsModal) instructionsModal.style.display = 'block';
+      });
+    }
+    if(closeInstructionsModal){
+      closeInstructionsModal.addEventListener('click', ()=>{
+        if(instructionsModal) instructionsModal.style.display = 'none';
+      });
+    }
+
     // image modal close button
     const closeImageModalBtn = document.getElementById('closeImageModal');
     if(closeImageModalBtn){ closeImageModalBtn.addEventListener('click', ()=>{ const im = document.getElementById('imageModal'); if(im) im.style.display = 'none'; }); }
@@ -261,6 +277,21 @@
         colorsDiv.appendChild(row);
       });
       modal.style.display = 'block';
+    }
+
+    // instructions text generator
+    function renderInstructions(){
+      const div = document.getElementById('instructionsText');
+      if(!div) return;
+      div.innerHTML = `
+        <h3>Instructions</h3>
+        <p>Use the color filters and search bar to find images by their dominant colors and titles.</p>
+        <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
+        <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
+        <p>You can pan the workspace by clicking and dragging on empty space.</p>
+        <p><span class="highlight">View Workspace Full Screen</span> Expand the workspace to full screen for easier arrangement of images.</p>
+        <p><span class="highlight">View Workspace as List</span>: See a tabular view of all images currently in the workspace, with an option to download the list as a CSV file.</p>
+      `;
     }
 
     // color helpers
