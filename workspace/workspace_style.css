@@ -207,14 +207,17 @@
   user-select: none;
 }
 
-.workspace span, #workspaceInner span {
+.workspace span, #workspacelabel span {
      font-family: "Public Sans", serif;
   font-weight: 900;
   font-style: normal;
-    font-size: 600px;
+    font-size: 1400px;
     color: #31302e;
-
-}
+    position:absolute;
+    left:200px;
+    top:120px;
+    line-height:1;
+ }
 
     .workspace.fullscreen {
       position: fixed;
