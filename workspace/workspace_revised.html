@@ -14,7 +14,11 @@
  <div id="workspaceColumns" class="content-with-sidebars">
   
      <div id="workspaceContainer" class="sticky">
-      <h2>Workspace</h2>
+      <div class="right-controls">
+          <button id="toggleTopBar">Collapse sidebar</button>
+               <h2>Workspace</h2>
+      </div>
+
       <div class="workspace" id="workspace"> 
         <!-- workspaceInner is the logical canvas: fixed logical size so text and cards share coordinates -->
         <div id="workspaceInner" style="position:relative; width:1200px; height:800px; overflow:visible;">
@@ -26,19 +30,17 @@
       </div>
     </div>
      <div id="sidebar" class="sticky">
-       <div class="right-controls">
-          <button id="toggleTopBar">Collapse sidebar</button>
-      </div>
       <div class="sidebar">
           <div class="options">
-            <h2>Filter by Color (primary)</h2>
+            <h2>Filter by Color</h2>
             <div class="filters" id="filters"></div>
             <div class="color-filters">
               <label>Primary Color: <input type="color" id="colorPicker" value="#ff0000"></label><br>
+               <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" placeholder="#rrggbb"></label>
+             
               <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
               
                 <!-- removed Color Name filter -->
-              <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" placeholder="#rrggbb"></label>
               <div>
                 <button id="clearFilters">Clear</button>
               </div>

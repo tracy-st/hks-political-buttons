@@ -59,8 +59,13 @@
 
     .sidebar {
         display: flex;
-        flex-direction: column
+        flex-direction: column;
+        padding:10px
     }
+}
+
+#sidebar {
+  max-width: 15%
 }
 
 /* Keep the left workspace container and right sidebar pinned */
@@ -101,13 +106,12 @@
     }
     .right-controls {
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+      justify-content: space-between;
     }
     .search-bar {
       width: 80%;
       padding: 5px;
-      margin: 0 0 10px 20px;
+      margin-bottom:15px;
      display: inline-block
     }
 
@@ -115,7 +119,6 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      margin-left: 20px;
       justify-content: left
     }
 
@@ -240,17 +243,21 @@
       pointer-events: none;
     }
 
+
+
     /* Collapsed sidebar layout: shrink sidebar and allow workspace to grow */
     .content-with-sidebars.sidebar-collapsed > *:nth-child(1) {
       width: calc(100% - 60px) !important;
       max-width: calc(100% - 60px) !important;
     }
+       /* 
     .content-with-sidebars.sidebar-collapsed > *:nth-child(2) {
       width: 60px !important;
       max-width: 60px !important;
       min-width: 60px !important;
       overflow: visible !important;
     }
+      */
 
     /* When the outer #sidebar has .collapsed, hide the inner .sidebar content but keep the toggle visible */
     #sidebar.collapsed .sidebar {
