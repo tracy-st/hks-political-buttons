@@ -319,6 +319,36 @@
       if(!workspaceItems || workspaceItems.length===0) return; const rows = [['id','name','url']]; workspaceItems.forEach(it=> rows.push([it.id||'', it.name||'', it.url||''])); const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'); const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'workspace_items.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     }); }
 
+    // --- fullscreen toggle for workspace container ---
+    const fsBtn = document.getElementById('workspaceFullscreenBtn');
+    const wsContainerEl = document.getElementById('workspaceContainer') || workspace;
+    if(fsBtn){
+      fsBtn.addEventListener('click', async ()=>{
+        const doc = document;
+        const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+        try{
+          if(!isFull){
+            if(wsContainerEl.requestFullscreen) await wsContainerEl.requestFullscreen();
+            else if(wsContainerEl.webkitRequestFullscreen) wsContainerEl.webkitRequestFullscreen();
+            else if(wsContainerEl.mozRequestFullScreen) wsContainerEl.mozRequestFullScreen();
+            else if(wsContainerEl.msRequestFullscreen) wsContainerEl.msRequestFullscreen();
+            fsBtn.textContent = 'Exit Full Screen';
+          } else {
+            if(doc.exitFullscreen) await doc.exitFullscreen();
+            else if(doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+            else if(doc.mozCancelFullScreen) doc.mozCancelFullScreen();
+            else if(doc.msExitFullscreen) doc.msExitFullscreen();
+            fsBtn.textContent = 'View Workspace Full Screen';
+          }
+        }catch(err){ console.warn('Fullscreen toggle failed', err); }
+      });
+    }
+
+    document.addEventListener('fullscreenchange', ()=>{
+      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      if(fsBtn) fsBtn.textContent = isFS ? 'Exit Full Screen' : 'View Workspace Full Screen';
+    });
+
     loadCSV();
     applyTransform();
   </script>
