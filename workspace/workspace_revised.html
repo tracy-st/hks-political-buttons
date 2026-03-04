@@ -179,6 +179,22 @@
         return true;
       });
 
+      // if we have a color filter, sort by the percentage of best matching color descending
+      if(cf.clr || cf.searchHex){
+        images.sort((a,b)=>{
+          const score = (img)=>{
+            let best=0;
+            img.colors.forEach(c=>{
+              const dist = cf.searchHex ? colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) : colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr));
+              const tol = cf.searchHex ? 24 : cf.tol;
+              if(dist <= tol) best = Math.max(best, c.proportion);
+            });
+            return best;
+          };
+          return score(b) - score(a);
+        });
+      }
+
       imageGrid.innerHTML = '';
       images.forEach(img => {
         const card = document.createElement('div');
