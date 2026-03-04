@@ -127,6 +127,10 @@
     const searchInput = document.getElementById('search');
     if(searchInput) searchInput.addEventListener('input', (e)=>{ searchTerm = e.target.value.toLowerCase(); renderImages(); });
 
+    // image modal close button
+    const closeImageModalBtn = document.getElementById('closeImageModal');
+    if(closeImageModalBtn){ closeImageModalBtn.addEventListener('click', ()=>{ const im = document.getElementById('imageModal'); if(im) im.style.display = 'none'; }); }
+
     async function loadCSV(){
       const resp = await fetch('../data/pylette_metadata.csv');
       const text = await resp.text();
