@@ -20,7 +20,7 @@
         <div id="workspaceInner" style="position:relative; width:1200px; height:800px; overflow:visible;">
           <!-- background layer (letters) — absolutely positioned in logical coords -->
           <div id="workspaceBackground" style="position:absolute; left:0; top:0; width:1200px; height:800px; pointer-events:none;">
-            <span id="workspaceLabel" style="position:absolute; left:200px; top:120px; font-size:220px; line-height:1; font-weight:700;">HKS</span>
+            <span id="workspaceLabel">HKS</span>
           </div>
         </div>
       </div>
@@ -162,6 +162,31 @@
     function colorDistance(a,b){ const dr=a.r-b.r, dg=a.g-b.g, db=a.b-b.b; return Math.sqrt(dr*dr+dg*dg+db*db); }
     function rgbToHsl(r,g,b){ r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b); let h=0,s=0,l=(max+min)/2; if(max!==min){ const d=max-min; s = l>0.5?d/(2-max-min):d/(max+min); switch(max){ case r: h=(g-b)/d + (g<b?6:0); break; case g: h=(b-r)/d + 2; break; case b: h=(r-g)/d + 4; break; } h/=6; } return {h:h*360,s,l}; }
     function colorNameFromHex(hex){ const {r,g,b}=hexToRgb(hex); const hsl=rgbToHsl(r,g,b); const h=hsl.h,l=hsl.l,s=hsl.s; if(l<0.12) return 'black'; if(l>0.92) return 'white'; if(s<0.12) return 'gray'; if(h>=345||h<15) return 'red'; if(h>=15&&h<45) return 'orange'; if(h>=45&&h<75) return 'yellow'; if(h>=75&&h<165) return 'green'; if(h>=165&&h<195) return 'cyan'; if(h>=195&&h<255) return 'blue'; if(h>=255&&h<285) return 'purple'; if(h>=285&&h<330) return 'magenta'; return 'pink'; }
+
+    // ----- filter controls (restore applyFilters and event hooks) -----
+    const colorPickerEl = document.getElementById('colorPicker');
+    const tolEl = document.getElementById('tolerance');
+    const colorNameEl = document.getElementById('colorNameFilter');
+    const searchHexEl = document.getElementById('searchHex');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+
+    if(tolEl){ document.getElementById('tolValue').textContent = tolEl.value; tolEl.addEventListener('input', (e)=>{ document.getElementById('tolValue').textContent = e.target.value; }); }
+
+    function applyFilters(){
+      const clr = normalizeHex((colorPickerEl && colorPickerEl.value) || '');
+      const tol = parseInt((tolEl && tolEl.value) || 60);
+      const colorName = (colorNameEl && colorNameEl.value || '').toLowerCase();
+      const searchHex = normalizeHex((searchHexEl && searchHexEl.value) || '');
+      window._colorFilter = { clr, tol, colorName, searchHex };
+      renderImages();
+    }
+
+    if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
+    if(tolEl) tolEl.addEventListener('input', applyFilters);
+    if(colorNameEl) colorNameEl.addEventListener('input', applyFilters);
+    if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
+    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(colorNameEl) colorNameEl.value=''; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } applyFilters(); });
+
 
     // addToWorkspace uses logical coords
     function addToWorkspace(img, x=50, y=50){
