@@ -433,8 +433,32 @@
     if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
     if(tolEl) tolEl.addEventListener('input', applyFilters);
     if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
-    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000';if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); applyFilters(); });
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+          // Reset Color Picker and Hex Search
+          if (colorPickerEl) colorPickerEl.value = '#ff0000';
+          if (searchHexEl) searchHexEl.value = '';
+          
+          // CORRECTED: Reset Search Input and the internal search variable
+          if (searchInput) {
+            searchInput.value = ''; // Clears the text in the UI
+            searchTerm = '';        // Resets the filter logic
+          }
 
+          // Reset Tolerance
+          if (tolEl) {
+            tolEl.value = 60;
+            document.getElementById('tolValue').textContent = 60;
+          }
+
+          // Uncheck all decade checkboxes
+          document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false);
+
+          // Re-run the filter logic to update the grid
+          applyFilters();
+          renderImages();
+        });
+      }
     const selectAllDecadesBtn = document.getElementById('selectAllDecades');
     if(selectAllDecadesBtn) selectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = true); renderImages(); });
 
