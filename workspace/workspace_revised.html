@@ -36,21 +36,19 @@
     </div>
      <div id="sidebar" class="sticky">
       <div class="sidebar">
-                      <div>
-                <button id="clearFilters">Clear</button>
-              </div>
+
           <div class="options">
             <h2>Filter by Color</h2>
             <div class="filters" id="filters"></div>
             <div class="color-filters">
               <label>Primary Color: <input type="color" id="colorPicker" value="#ff0000"></label><br>
-               <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" placeholder="#rrggbb"></label>
+               <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" class="search-bar" placeholder="#rrggbb"></label>
              
               <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
               
                 <!-- removed Color Name filter -->
 
-                        <div class="options">
+          <div class="options">
             <h2>Search Titles</h2>
             <input id="search" placeholder="Search titles..." class="search-bar">
           </div>
@@ -59,11 +57,14 @@
           <div class="options">
             <h2>Show only:</h2>
             <div class="decade-filters" id="decadeFilters"></div>
-            <div>
-              <button id="selectAllDecades">Select All</button>
-              <button id="deselectAllDecades">Deselect All</button>
+            <div class="options">
+              <button id="selectAllDecades">Select All Decades</button>
+              <button id="deselectAllDecades">Deselect All Decades</button>
             </div>
           </div>
+             <div class="options">
+                <button id="clearFilters">Clear all Filters</button>
+            </div>
       </div>
       
     </div>
@@ -167,7 +168,7 @@
     }
 
     async function loadCSV(){
-      const resp = await fetch('../data/hks_buttons_color_metadata.csv');
+      const resp = await fetch('../data/hks_buttons_new.csv');
       const text = await resp.text();
       const parsed = Papa.parse(text,{ header:true, skipEmptyLines:true });
       const byImage = {};
@@ -183,12 +184,14 @@
         return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, earliest_date: g.earliest_date, raw:g.raw };
       });
       renderDecadeFilters();
-      renderImages();
+  //    renderImages();
     }
 
     function renderImages(){
       const cf = window._colorFilter || {};
       const selectedDecades = Array.from(document.querySelectorAll('#decadeFilters input:checked')).map(cb => parseInt(cb.value));
+  
+     
       let images = data.filter(i => {
         if(searchTerm && !(i.name||'').toLowerCase().includes(searchTerm)) return false;
         
