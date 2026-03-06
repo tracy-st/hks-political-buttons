@@ -41,8 +41,8 @@
             <h2>Filter by Color</h2>
             <div class="filters" id="filters"></div>
             <div class="color-filters">
-              <label>Primary Color: <input type="color" id="colorPicker" value="#ff0000"></label><br>
-               <label style="display:block; margin-top:6px;">Search Hex: <input id="searchHex" class="search-bar" placeholder="#rrggbb"></label>
+              <label>Color: <input type="color" id="colorPicker" value="#ff0000"> </label><br>
+               <label style="display:block; margin-top:6px;"><input id="searchHex" class="search-bar" placeholder="Search Hex (e.g. #rrggbb)"></label>
              
               <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
               
@@ -52,10 +52,14 @@
             <h2>Search Titles</h2>
             <input id="search" placeholder="Search titles..." class="search-bar">
           </div>
+          <div class="options">
+              <h2>Search Metadata</h2>
+             <input id="searchMetadata" placeholder="Search person, party, office..." class="search-bar">
+          </div>
             </div>
           </div>
           <div class="options">
-            <h2>Show only:</h2>
+            <h2>Decade (show only):</h2>
             <div class="decade-filters" id="decadeFilters"></div>
             <div class="options">
               <button id="selectAllDecades">Select All Decades</button>
@@ -63,7 +67,7 @@
             </div>
           </div>
              <div class="options">
-                <button id="clearFilters">Clear all Filters</button>
+                <button id="clearFilters" class="clear">Clear all Filters</button>
             </div>
       </div>
       
@@ -108,6 +112,15 @@
     const wsInner = document.getElementById('workspaceInner');
     let data = [];
     let searchTerm = '';
+    let metadataSearchTerm = '';
+    const searchMetadataInput = document.getElementById('searchMetadata');
+
+    if(searchMetadataInput) {
+      searchMetadataInput.addEventListener('input', (e) => { 
+        metadataSearchTerm = e.target.value.toLowerCase(); 
+        renderImages(); 
+      });
+    }
     let workspaceItems = [];
 
     // logical pan/zoom state
@@ -174,14 +187,19 @@
       const byImage = {};
       parsed.data.forEach(row=>{
         const iiifId = (row.iiifid||'').trim(); if(!iiifId) return;
-        if(!byImage[iiifId]) byImage[iiifId] = { iiifId: iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', earliest_date: row.earliest_date||'', raw: [] };
+        if(!byImage[iiifId]) byImage[iiifId] = { iiifId: iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', earliest_date: row.earliest_date||'', person: row.person || '', 
+      party: row.party || '',
+      office: row.office || '',
+      raw: [] };
         // use Hex header for color
         byImage[iiifId].raw.push({ color: row.Hex, proportion: row.frequency });
       });
       data = Object.keys(byImage).map((k,idx)=>{
         const g = byImage[k]; g.raw.sort((a,b)=> (parseFloat(b.proportion)||0) - (parseFloat(a.proportion)||0));
         const colors = g.raw.map(rr=>({ hex: (rr.color||''), proportion: parseFloat(rr.proportion)||0 })).filter(c=>c.hex);
-        return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, earliest_date: g.earliest_date, raw:g.raw };
+        return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, earliest_date: g.earliest_date, person: g.person, 
+  party: g.party, 
+  office: g.office };
       });
       renderDecadeFilters();
   //    renderImages();
@@ -190,10 +208,18 @@
     function renderImages(){
       const cf = window._colorFilter || {};
       const selectedDecades = Array.from(document.querySelectorAll('#decadeFilters input:checked')).map(cb => parseInt(cb.value));
-  
      
       let images = data.filter(i => {
+        // Title search
         if(searchTerm && !(i.name||'').toLowerCase().includes(searchTerm)) return false;
+        
+        // Metadata search
+        if(metadataSearchTerm) {
+          const personMatch = (i.person || '').toLowerCase().includes(metadataSearchTerm);
+          const partyMatch = (i.party || '').toLowerCase().includes(metadataSearchTerm);
+          const officeMatch = (i.office || '').toLowerCase().includes(metadataSearchTerm);
+          if (!personMatch && !partyMatch && !officeMatch) return false;
+        }
         
         // decade filter
         if(selectedDecades.length > 0){
@@ -456,6 +482,11 @@
 
           // Uncheck all decade checkboxes
           document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false);
+
+          if(searchMetadataInput) {
+            searchMetadataInput.value = '';
+            metadataSearchTerm = '';
+          }
 
           // Re-run the filter logic to update the grid
           applyFilters();
