@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Workspace</title>
+  <link rel="stylesheet" href="workspace_style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+ <div id="workspaceColumns" class="content-with-sidebars">
+  
+     <div id="workspaceContainer" class="sticky">
+      <div class="right-controls">
+          <button id="toggleTopBar">Collapse sidebar</button>
+               <h2>Workspace</h2>
+      </div>
+
+      <div class="workspace" id="workspace"> 
+        <!-- workspaceInner is the logical canvas: fixed logical size so text and cards share coordinates -->
+        <div id="workspaceInner" style="position:relative; width:1200px; height:800px; overflow:visible;">
+          <!-- background layer (letters) — absolutely positioned in logical coords -->
+          <div id="workspaceBackground" style="position:absolute; left:0; top:0; width:1200px; height:800px; pointer-events:none;">
+            <span id="workspaceLabel">HKS</span>
+          </div>
+        </div>
+      </div>
+                <div class="view-bar">
+              <button id="viewList">View Workspace as List</button>
+              <button id="workspaceFullscreenBtn">View Workspace Full Screen</button>
+              <button id="instructionsBtn">Instructions</button>
+          </div>
+    </div>
+     <div id="sidebar" class="sticky">
+      <div class="sidebar">
+
+          <div class="options">
+            <h2>Filter by Color</h2>
+            <div class="filters" id="filters"></div>
+            <div class="color-filters">
+              <label>Color: <input type="color" id="colorPicker" value="#ff0000"> </label><br>
+               <label style="display:block; margin-top:6px;"><input id="searchHex" class="search-bar" placeholder="Search Hex (e.g. #rrggbb)"></label>
+             
+              <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
+              
+                <!-- removed Color Name filter -->
+
+          <div class="options">
+            <h2>Search Titles</h2>
+            <input id="search" placeholder="Search titles..." class="search-bar">
+          </div>
+          <div class="options">
+              <h2>Search Metadata</h2>
+             <input id="searchMetadata" placeholder="Search person, party, office..." class="search-bar">
+          </div>
+            </div>
+          </div>
+          <div class="options">
+            <h2>Decade (show only):</h2>
+            <div class="decade-filters" id="decadeFilters"></div>
+            <div class="options">
+              <button id="selectAllDecades">Select All Decades</button>
+              <button id="deselectAllDecades">Deselect All Decades</button>
+            </div>
+          </div>
+             <div class="options">
+                <button id="clearFilters" class="clear">Clear all Filters</button>
+            </div>
+      </div>
+      
+    </div>
+    <div id="gridContainer">
+      <div id="resultCount" style="padding:10px; font-size:14px; color:#666; font-weight:500;"></div>
+      <div class="image-grid" id="imageGrid"></div>
+      
+    </div>
+  </div>
+    <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <h3>Workspace Items</h3>
+      <table id="workspaceTable" style="width:100%;">
+        <thead><tr><th>Thumbnail</th><th>Title</th><th>ID</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button id="downloadCSV" style="margin-top: 10px; padding: 5px 10px;">Download CSV</button>
+      <button id="closeModal" style="margin-top: 10px; padding: 5px 10px;">Close</button>
+    </div>
+  </div>
+
+  <div id="instructionsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <div id="instructionsText"></div>
+      <button id="closeInstructionsModal" style="margin-top:10px;">Close</button>
+    </div>
+  </div>
+
+  <div id="imageModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1001;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; max-height:80%; overflow:auto; max-width:80%;">
+      <img id="modalImg" style="max-width:100%; height:auto; display:block; margin-bottom:10px;">
+      <div id="modalColors"></div>
+      <button id="closeImageModal" style="margin-top:10px;">Close</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    const imageGrid = document.getElementById('imageGrid');
+    const workspace = document.getElementById('workspace');
+    const wsInner = document.getElementById('workspaceInner');
+    let data = [];
+    let searchTerm = '';
+    let metadataSearchTerm = '';
+    const searchMetadataInput = document.getElementById('searchMetadata');
+
+    if(searchMetadataInput) {
+      searchMetadataInput.addEventListener('input', (e) => { 
+        metadataSearchTerm = e.target.value.toLowerCase(); 
+        renderImages(); 
+      });
+    }
+    let workspaceItems = [];
+
+    // logical pan/zoom state
+    let zoom = 1;
+    let panX = 0; // logical units
+    let panY = 0;
+    function clamp(v,a,b){ return Math.min(Math.max(v,a),b); }
+
+    if(wsInner) wsInner.style.transformOrigin = '0 0';
+    function applyTransform(){
+      if(!wsInner) return;
+      // translate takes pixels; panX/panY are logical units so convert by *zoom
+      wsInner.style.transform = `translate(${panX * zoom}px, ${panY * zoom}px) scale(${zoom})`;
+    }
+
+    function screenToLogical(clientX, clientY){
+      const rect = workspace.getBoundingClientRect();
+      const sx = (clientX - rect.left) / zoom;
+      const sy = (clientY - rect.top) / zoom;
+      return { lx: sx - panX, ly: sy - panY };
+    }
+
+    function logicalToScreen(lx, ly){
+      const rect = workspace.getBoundingClientRect();
+      const sx = (lx + panX) * zoom + rect.left;
+      const sy = (ly + panY) * zoom + rect.top;
+      return { sx, sy };
+    }
+
+    // UI hooks (minimal)
+    const searchInput = document.getElementById('search');
+    if(searchInput) searchInput.addEventListener('input', (e)=>{ searchTerm = e.target.value.toLowerCase(); renderImages(); });
+
+    // instructions modal wiring
+    const instructionsBtn = document.getElementById('instructionsBtn');
+    const instructionsModal = document.getElementById('instructionsModal');
+    const closeInstructionsModal = document.getElementById('closeInstructionsModal');
+    if(instructionsBtn){
+      instructionsBtn.addEventListener('click', ()=>{
+        renderInstructions();
+        if(instructionsModal) instructionsModal.style.display = 'block';
+      });
+    }
+    if(closeInstructionsModal){
+      closeInstructionsModal.addEventListener('click', ()=>{
+        if(instructionsModal) instructionsModal.style.display = 'none';
+      });
+    }
+
+    // image modal close button
+    const closeImageModalBtn = document.getElementById('closeImageModal');
+    if(closeImageModalBtn){ closeImageModalBtn.addEventListener('click', ()=>{ const im = document.getElementById('imageModal'); if(im) im.style.display = 'none'; }); }
+
+    // Construct IIIF thumbnail URL from iiifId
+    function buildIIIFUrl(iiifId){
+      if(!iiifId) return '';
+      return `https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/${iiifId}/full/,300/0/default.jpg`;
+    }
+
+    async function loadCSV(){
+      const resp = await fetch('../data/hks_buttons_new.csv');
+      const text = await resp.text();
+      const parsed = Papa.parse(text,{ header:true, skipEmptyLines:true });
+      const byImage = {};
+      parsed.data.forEach(row=>{
+        const iiifId = (row.iiifid||'').trim(); if(!iiifId) return;
+        if(!byImage[iiifId]) byImage[iiifId] = { iiifId: iiifId, id: iiifId, w_cm: row.wcm||'', title: row.name||'', earliest_date: row.earliest_date||'', person: row.person || '', 
+      party: row.party || '',
+      office: row.office || '',
+      raw: [] };
+        // use Hex header for color
+        byImage[iiifId].raw.push({ color: row.Hex, proportion: row.frequency });
+      });
+      data = Object.keys(byImage).map((k,idx)=>{
+        const g = byImage[k]; g.raw.sort((a,b)=> (parseFloat(b.proportion)||0) - (parseFloat(a.proportion)||0));
+        const colors = g.raw.map(rr=>({ hex: (rr.color||''), proportion: parseFloat(rr.proportion)||0 })).filter(c=>c.hex);
+        return { id: g.id||`img-${idx}`, name: g.title||`Image ${idx+685}`, width: parseFloat(g.w_cm)||3, iiifId: g.iiifId, url: buildIIIFUrl(g.iiifId), colors, earliest_date: g.earliest_date, person: g.person, 
+  party: g.party, 
+  office: g.office };
+      });
+      renderDecadeFilters();
+  //    renderImages();
+    }
+
+    function renderImages(){
+      const cf = window._colorFilter || {};
+      const selectedDecades = Array.from(document.querySelectorAll('#decadeFilters input:checked')).map(cb => parseInt(cb.value));
+     
+      let images = data.filter(i => {
+        // Title search
+        if(searchTerm && !(i.name||'').toLowerCase().includes(searchTerm)) return false;
+        
+        // Metadata search
+        if(metadataSearchTerm) {
+          const personMatch = (i.person || '').toLowerCase().includes(metadataSearchTerm);
+          const partyMatch = (i.party || '').toLowerCase().includes(metadataSearchTerm);
+          const officeMatch = (i.office || '').toLowerCase().includes(metadataSearchTerm);
+          if (!personMatch && !partyMatch && !officeMatch) return false;
+        }
+        
+        // decade filter
+        if(selectedDecades.length > 0){
+          const date = i.earliest_date;
+          if(date && /^\d{4}$/.test(date)){
+            const year = parseInt(date);
+            const decade = Math.floor(year / 10) * 10;
+            if(!selectedDecades.includes(decade)) return false;
+          } else {
+            // if no date, exclude if any decades selected
+            return false;
+          }
+        }
+        
+        // if no color-based filter active, keep all
+        if(!cf.clr && !cf.searchHex) return true;
+
+        if(cf.searchHex){
+          let best = 0;
+          i.colors.forEach(c => {
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) <= cf.tol) best = Math.max(best, c.proportion);
+          });
+          return best > 0;
+}
+
+        if(cf.clr){
+          let best = 0;
+          i.colors.forEach(c => {
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr)) <= cf.tol){
+              best = Math.max(best, c.proportion);
+            }
+          });
+          return best > 0;
+        }
+
+        return true;
+      });
+
+      // if we have a color filter, sort by the percentage of best matching color descending
+      if(cf.clr || cf.searchHex){
+        images.sort((a,b)=>{
+          const score = (img)=>{
+            let best=0;
+            img.colors.forEach(c=>{
+              // Inside the images.sort block
+              const tol = cf.tol; // Use the slider value regardless of search type
+              const dist = cf.searchHex ? colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) : colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr));
+              if(dist <= tol) best = Math.max(best, c.proportion);
+            });
+            return best;
+          };
+          return score(b) - score(a);
+        });
+      }
+
+      // update decade counts based on filtered images
+      const filteredDecadeCounts = {};
+      images.forEach(img => {
+        const date = img.earliest_date;
+        if(date && /^\d{4}$/.test(date)){
+          const year = parseInt(date);
+          const decade = Math.floor(year / 10) * 10;
+          filteredDecadeCounts[decade] = (filteredDecadeCounts[decade] || 0) + 1;
+        }
+      });
+      document.querySelectorAll('#decadeFilters label').forEach(label => {
+        const decade = parseInt(label.getAttribute('data-decade'));
+        const count = filteredDecadeCounts[decade] || 0;
+        const checkbox = label.querySelector('input');
+        const textNode = label.lastChild;
+        textNode.textContent = ` ${decade}s (${count})`;
+      });
+
+      imageGrid.innerHTML = '';
+      
+      // update result count
+      const countEl = document.getElementById('resultCount');
+      if(countEl) countEl.textContent = `${images.length} / ${data.length} results`;
+      images.forEach(img => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.draggable = true;
+        card.ondragstart = (e) => e.dataTransfer.setData('id', img.id);
+        card.onclick = () => addToWorkspace(img, 100, 100);
+        const imgEl = document.createElement('img'); imgEl.src = img.url; imgEl.alt = img.name; card.appendChild(imgEl);
+
+        // swatches row
+        const swatchesDiv = document.createElement('div');
+        swatchesDiv.className = 'swatches';
+        img.colors.slice(0,5).forEach(c => {
+          const s = document.createElement('span');
+          s.style.display = 'inline-block';
+          s.style.width = '18px';
+          s.style.height = '18px';
+          s.style.background = c.hex;
+          s.style.marginRight = '6px';
+          s.style.border = '1px solid #fff';
+          s.title = `${c.hex} — ${Math.round(c.proportion*100)}%`;
+          swatchesDiv.appendChild(s);
+        });
+        card.appendChild(swatchesDiv);
+
+        const nameDiv = document.createElement('div'); nameDiv.textContent = img.name; nameDiv.style.marginTop = '6px'; nameDiv.style.cursor = 'pointer';
+        nameDiv.addEventListener('click', (e)=>{ e.stopPropagation(); openModal(img.id); });
+        card.appendChild(nameDiv);
+        imageGrid.appendChild(card);
+      });
+    }
+
+    function openModal(id){
+      const img = data.find(i => i.id === id);
+      if(!img) return;
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('modalImg');
+      const colorsDiv = document.getElementById('modalColors');
+      modalImg.src = img.url;
+      colorsDiv.innerHTML = '';
+      
+      // add metadata header
+      const metadataDiv = document.createElement('div');
+      metadataDiv.style.marginBottom = '12px';
+      metadataDiv.style.paddingBottom = '12px';
+      metadataDiv.style.borderBottom = '1px solid #ddd';
+      
+      const titleRow = document.createElement('div');
+      titleRow.style.marginBottom = '6px';
+      titleRow.innerHTML = `<strong>Title:</strong> ${img.name || 'N/A'}`;
+      metadataDiv.appendChild(titleRow);
+      
+      const dateRow = document.createElement('div');
+      dateRow.style.marginBottom = '6px';
+      dateRow.innerHTML = `<strong>Earliest Date:</strong> ${img.earliest_date || 'N/A'}`;
+      metadataDiv.appendChild(dateRow);
+      
+      const personRow = document.createElement('div');
+      personRow.style.marginBottom = '6px';
+      personRow.innerHTML = `<strong>Person:</strong> ${img.person || 'N/A'}`;
+      metadataDiv.appendChild(personRow);
+      
+      const partyRow = document.createElement('div');
+      partyRow.style.marginBottom = '6px';
+      partyRow.innerHTML = `<strong>Party:</strong> ${img.party || 'N/A'}`;
+      metadataDiv.appendChild(partyRow);
+      
+      const locationRow = document.createElement('div');
+      locationRow.style.marginBottom = '6px';
+      locationRow.innerHTML = `<strong>Location:</strong> ${img.location || 'N/A'}`;
+      metadataDiv.appendChild(locationRow);
+      
+      colorsDiv.appendChild(metadataDiv);
+      
+      // add colors header
+      const colorsHeader = document.createElement('div');
+      colorsHeader.style.marginBottom = '6px';
+      colorsHeader.style.fontWeight = 'bold';
+      colorsHeader.textContent = 'Colors:';
+      colorsDiv.appendChild(colorsHeader);
+      
+      // show swatches and details
+      img.colors.forEach(c=>{
+        const row = document.createElement('div');
+        row.style.marginBottom = '6px';
+        const sw = document.createElement('span');
+        sw.style.display='inline-block'; sw.style.width='24px'; sw.style.height='24px'; sw.style.background=c.hex; sw.style.border='1px solid #000'; sw.style.verticalAlign='middle'; sw.style.marginRight='8px';
+        row.appendChild(sw);
+        const txt = document.createElement('span'); txt.innerHTML = `<strong>${c.hex}</strong> — ${Math.round(c.proportion*100)}%`;
+        row.appendChild(txt);
+        colorsDiv.appendChild(row);
+      });
+      modal.style.display = 'block';
+    }
+
+    function renderDecadeFilters(){
+      const container = document.getElementById('decadeFilters');
+      if(!container) return;
+      const decadeCounts = {};
+      data.forEach(img => {
+        const date = img.earliest_date;
+        if(date && /^\d{4}$/.test(date)){
+          const year = parseInt(date);
+          const decade = Math.floor(year / 10) * 10;
+          decadeCounts[decade] = (decadeCounts[decade] || 0) + 1;
+        }
+      });
+      const sortedDecades = Object.keys(decadeCounts).map(d => parseInt(d)).sort((a,b)=>a-b);
+      container.innerHTML = '';
+      sortedDecades.forEach(decade => {
+        const label = document.createElement('label');
+        label.style.display = 'block';
+        label.setAttribute('data-decade', decade);
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = decade;
+        checkbox.checked = false; // default none selected
+        checkbox.addEventListener('change', renderImages);
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(` ${decade}s (${decadeCounts[decade]})`));
+        container.appendChild(label);
+      });
+    }
+
+    // instructions text generator
+    function renderInstructions(){
+      const div = document.getElementById('instructionsText');
+      if(!div) return;
+      div.innerHTML = `
+        <h3>Instructions</h3>
+        <p>Use the color filters, decade filters, and search bar to find images by their dominant colors, creation decade, and titles.</p>
+        <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
+        <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
+        <p>You can pan the workspace by clicking and dragging on empty space.</p>
+        <p><span class="highlight">View Workspace Full Screen</span> Expand the workspace to full screen for easier arrangement of images.</p>
+        <p><span class="highlight">View Workspace as List</span>: See a tabular view of all images currently in the workspace, with an option to download the list as a CSV file.</p>
+      `;
+    }
+
+    // color helpers
+    function normalizeHex(h){ if(!h) return ''; h=h.trim(); if(h[0] !== '#') h='#'+h; if(h.length===4) h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return h.toLowerCase(); }
+    function hexToRgb(hex){ if(!hex) return {r:0,g:0,b:0}; hex=hex.replace('#',''); if(hex.length===3) hex=hex.split('').map(ch=>ch+ch).join(''); const n=parseInt(hex,16); return {r:(n>>16)&255, g:(n>>8)&255, b:n&255}; }
+    function colorDistance(a,b){ const dr=a.r-b.r, dg=a.g-b.g, db=a.b-b.b; return Math.sqrt(dr*dr+dg*dg+db*db); }
+    function rgbToHsl(r,g,b){ r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b); let h=0,s=0,l=(max+min)/2; if(max!==min){ const d=max-min; s = l>0.5?d/(2-max-min):d/(max+min); switch(max){ case r: h=(g-b)/d + (g<b?6:0); break; case g: h=(b-r)/d + 2; break; case b: h=(r-g)/d + 4; break; } h/=6; } return {h:h*360,s,l}; }
+    function colorNameFromHex(hex){ const {r,g,b}=hexToRgb(hex); const hsl=rgbToHsl(r,g,b); const h=hsl.h,l=hsl.l,s=hsl.s; if(l<0.12) return 'black'; if(l>0.92) return 'white'; if(s<0.12) return 'gray'; if(h>=345||h<15) return 'red'; if(h>=15&&h<45) return 'orange'; if(h>=45&&h<75) return 'yellow'; if(h>=75&&h<165) return 'green'; if(h>=165&&h<195) return 'cyan'; if(h>=195&&h<255) return 'blue'; if(h>=255&&h<285) return 'purple'; if(h>=285&&h<330) return 'magenta'; return 'pink'; }
+
+    // ----- filter controls (restore applyFilters and event hooks) -----
+    const colorPickerEl = document.getElementById('colorPicker');
+    const tolEl = document.getElementById('tolerance');
+    const searchHexEl = document.getElementById('searchHex');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+
+    if(tolEl){ document.getElementById('tolValue').textContent = tolEl.value; tolEl.addEventListener('input', (e)=>{ document.getElementById('tolValue').textContent = e.target.value; }); }
+
+    function applyFilters(){
+      const clr = normalizeHex((colorPickerEl && colorPickerEl.value) || '');
+      const tol = parseInt((tolEl && tolEl.value) || 60);
+      const searchHex = normalizeHex((searchHexEl && searchHexEl.value) || '');
+        window._colorFilter = { clr, tol, searchHex };
+      renderImages();
+    }
+
+    if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
+    if(tolEl) tolEl.addEventListener('input', applyFilters);
+    if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+          // Reset Color Picker and Hex Search
+          if (colorPickerEl) colorPickerEl.value = '#ff0000';
+          if (searchHexEl) searchHexEl.value = '';
+          
+          // CORRECTED: Reset Search Input and the internal search variable
+          if (searchInput) {
+            searchInput.value = ''; // Clears the text in the UI
+            searchTerm = '';        // Resets the filter logic
+          }
+
+          // Reset Tolerance
+          if (tolEl) {
+            tolEl.value = 60;
+            document.getElementById('tolValue').textContent = 60;
+          }
+
+          // Uncheck all decade checkboxes
+          document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false);
+
+          if(searchMetadataInput) {
+            searchMetadataInput.value = '';
+            metadataSearchTerm = '';
+          }
+
+          // Re-run the filter logic to update the grid
+          applyFilters();
+          renderImages();
+        });
+      }
+    const selectAllDecadesBtn = document.getElementById('selectAllDecades');
+    if(selectAllDecadesBtn) selectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = true); renderImages(); });
+
+    const deselectAllDecadesBtn = document.getElementById('deselectAllDecades');
+    if(deselectAllDecadesBtn) deselectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); renderImages(); });
+
+    // addToWorkspace uses logical coords
+    function addToWorkspace(img, x=50, y=50){
+      const host = wsInner || workspace; if([...host.children].some(el=>el.dataset.id===img.id)) return;
+      const div = document.createElement('div'); div.className='workspace-card'; div.dataset.id=img.id; div.style.position='absolute'; div.style.left = x + 'px'; div.style.top = y + 'px'; div.innerHTML = `<img src="${img.url}" alt="${img.name}" style="width:${img.width*5}px">`;
+      let offsetX=0, offsetY=0, isDragging=false;
+      div.addEventListener('mousedown',(e)=>{ e.stopPropagation(); isDragging=true; const logical = screenToLogical(e.clientX, e.clientY); const curLeft=parseFloat(div.style.left||0); const curTop=parseFloat(div.style.top||0); offsetX = logical.lx - curLeft; offsetY = logical.ly - curTop; div.style.zIndex=1000; });
+      const onMove = (e)=>{ if(!isDragging) return; const logical = screenToLogical(e.clientX, e.clientY); const nx = logical.lx - offsetX; const ny = logical.ly - offsetY; div.style.left = nx + 'px'; div.style.top = ny + 'px'; };
+      const onUp = (e)=>{ if(isDragging){ const rect = workspace.getBoundingClientRect(); if(e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom){ if(div.parentNode) div.parentNode.removeChild(div); const idx = workspaceItems.findIndex(it=>it.id===div.dataset.id); if(idx>-1) workspaceItems.splice(idx,1); } } isDragging=false; div.style.zIndex=''; };
+      document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+      host.appendChild(div); workspaceItems.push({ id: img.id, name: img.name, url: img.url });
+    }
+
+    // drag/drop onto workspace
+    workspace.addEventListener('dragover',(e)=>e.preventDefault());
+    workspace.addEventListener('drop',(e)=>{ e.preventDefault(); const id = e.dataTransfer.getData('id'); const img = data.find(i=>i.id===id); if(img){ const logical = screenToLogical(e.clientX, e.clientY); addToWorkspace(img, logical.lx, logical.ly); } });
+
+    // panning
+    let isPanning=false, panLastX=0, panLastY=0;
+    workspace.addEventListener('mousedown',(e)=>{ if(e.target.closest('.workspace-card')) return; isPanning=true; panLastX=e.clientX; panLastY=e.clientY; e.preventDefault(); });
+    document.addEventListener('mousemove',(e)=>{ if(!isPanning) return; const deltaX = e.clientX - panLastX; const deltaY = e.clientY - panLastY; panX += deltaX / zoom; panY += deltaY / zoom; applyTransform(); panLastX = e.clientX; panLastY = e.clientY; });
+    document.addEventListener('mouseup',()=>{ isPanning=false; });
+
+    // wheel zoom around cursor
+    workspace.addEventListener('wheel',(e)=>{ e.preventDefault(); const mouse = screenToLogical(e.clientX, e.clientY); const mx = mouse.lx, my = mouse.ly; const delta = e.deltaY>0 ? -0.1 : 0.1; const newZoom = clamp(zoom + delta, 0.5, 3); if(newZoom===zoom) return; panX = (mx + panX) * (zoom / newZoom) - mx; panY = (my + panY) * (zoom / newZoom) - my; zoom = newZoom; applyTransform(); });
+
+    // --- workspace list modal and CSV export ---
+    function renderWorkspaceTable(){
+      const modal = document.getElementById('modal');
+      const tbody = document.querySelector('#workspaceTable tbody');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      if(!workspaceItems || workspaceItems.length===0){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td'); td.colSpan = 3; td.textContent = 'No items in workspace'; tr.appendChild(td); tbody.appendChild(tr); return;
+      }
+      workspaceItems.forEach(it => {
+        const tr = document.createElement('tr');
+        const tdThumb = document.createElement('td');
+        const img = document.createElement('img'); img.src = it.url; img.style.width = '60px'; img.style.height = 'auto'; tdThumb.appendChild(img);
+        const tdTitle = document.createElement('td'); tdTitle.textContent = it.name || '';
+        const tdId = document.createElement('td'); tdId.textContent = it.id || '';
+        tr.appendChild(tdThumb); tr.appendChild(tdTitle); tr.appendChild(tdId);
+        tbody.appendChild(tr);
+      });
+    }
+
+    const viewListBtn = document.getElementById('viewList');
+    if(viewListBtn){ viewListBtn.addEventListener('click', ()=>{ renderWorkspaceTable(); const m = document.getElementById('modal'); if(m) m.style.display = 'block'; }); }
+
+    const closeModalBtn = document.getElementById('closeModal');
+    if(closeModalBtn){ closeModalBtn.addEventListener('click', ()=>{ const m = document.getElementById('modal'); if(m) m.style.display = 'none'; }); }
+
+    const downloadCSVBtn = document.getElementById('downloadCSV');
+    if(downloadCSVBtn){ downloadCSVBtn.addEventListener('click', ()=>{
+      if(!workspaceItems || workspaceItems.length===0) return; const rows = [['id','name','url']]; workspaceItems.forEach(it=> rows.push([it.id||'', it.name||'', it.url||''])); const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'); const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'workspace_items.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }); }
+
+    // --- fullscreen toggle for workspace container ---
+    const fsBtn = document.getElementById('workspaceFullscreenBtn');
+    const wsContainerEl = document.getElementById('workspaceContainer') || workspace;
+    if(fsBtn){
+      fsBtn.addEventListener('click', async ()=>{
+        const doc = document;
+        const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+        try{
+          if(!isFull){
+            if(wsContainerEl.requestFullscreen) await wsContainerEl.requestFullscreen();
+            else if(wsContainerEl.webkitRequestFullscreen) wsContainerEl.webkitRequestFullscreen();
+            else if(wsContainerEl.mozRequestFullScreen) wsContainerEl.mozRequestFullScreen();
+            else if(wsContainerEl.msRequestFullscreen) wsContainerEl.msRequestFullscreen();
+            fsBtn.textContent = 'Exit Full Screen';
+          } else {
+            if(doc.exitFullscreen) await doc.exitFullscreen();
+            else if(doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+            else if(doc.mozCancelFullScreen) doc.mozCancelFullScreen();
+            else if(doc.msExitFullscreen) doc.msExitFullscreen();
+            fsBtn.textContent = 'View Workspace Full Screen';
+          }
+        }catch(err){ console.warn('Fullscreen toggle failed', err); }
+      });
+    }
+
+    document.addEventListener('fullscreenchange', ()=>{
+      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      if(fsBtn) fsBtn.textContent = isFS ? 'Exit Full Screen' : 'View Workspace Full Screen';
+    });
+
+    // --- sidebar collapse/expand ---
+    const toggleTopBarBtn = document.getElementById('toggleTopBar');
+    const workspaceColumnsEl = document.getElementById('workspaceColumns');
+    const sidebarEl = document.getElementById('sidebar');
+    if(toggleTopBarBtn && sidebarEl && workspaceColumnsEl){
+      toggleTopBarBtn.addEventListener('click', ()=>{
+        const collapsed = sidebarEl.classList.toggle('collapsed');
+        workspaceColumnsEl.classList.toggle('sidebar-collapsed', collapsed);
+        toggleTopBarBtn.textContent = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+      });
+    }
+
+    loadCSV();
+    applyTransform();
+  </script>
+
+
+</body>
+</html>

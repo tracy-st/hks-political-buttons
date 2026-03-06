@@ -1,0 +1,309 @@
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h2 {
+      margin: 0;
+    }
+    .options {
+      display: flex;
+      justify-content: flex-start;
+      flex-direction: column
+    }
+
+    .sticky {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      padding: 10px;
+      z-index: 1000;
+    }
+
+/* container */
+.content-with-sidebars {
+    display:flex;
+    flex-wrap:nowrap;
+    align-items: flex-start;
+}
+
+/* columns */
+.content-with-sidebars > * {
+    max-width:50%;
+    padding:1rem;
+}
+
+/* tablet breakpoint */
+@media (min-width:768px) {
+    .content-with-sidebars > * {
+        width:50%;
+    }
+    .content-with-sidebars > *:nth-child(1) {
+        width:100%;
+    }
+}
+
+/* desktop breakpoint */
+@media (min-width:1024px) {
+    .content-with-sidebars > * {
+        width:25%;
+    }
+    .content-with-sidebars > *:nth-child(1) {
+        width:50%;
+    }
+    .content-with-sidebars > *:nth-child(2) {
+        order:-1;
+    }
+
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        padding:10px
+    }
+}
+
+#sidebar {
+  max-width: 15%
+}
+
+/* Keep the left workspace container and right sidebar pinned */
+#workspaceContainer.sticky,
+#sidebar.sticky {
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+  z-index: 1000;
+  background: #fff;
+  padding: 10px;
+}
+
+.sidebar.collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    overflow: hidden;
+}
+
+.sidebar.collapsed div:first-child,
+.sidebar.collapsed div:nth-child(2) {
+  display: none;
+}
+
+/* Keep the expand/collapse button visible when sidebar is collapsed */
+.sidebar.collapsed .list-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  margin: 0 6px;
+  pointer-events: auto;
+  z-index: 1001;
+}
+
+    .right-controls {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center
+    }
+    .search-bar {
+      width: 80%;
+      padding: 5px;
+      margin-bottom:15px;
+     display: inline-block
+    }
+
+    input[type="range"] {
+      width:80%;
+    }
+
+    .view-bar {
+      display: flex;
+      flex-direction: row;
+      gap: 5px;
+      margin-top:10px;
+      justify-content: space-between;
+      align-items: flex-end
+    }
+
+    h2 {
+      font-size: 1.1em;
+    }
+
+    .instructions p {
+      font-size:0.8em
+    }
+
+    .filters {
+      margin-left: 20px;
+      display: flex;
+      flex-direction: column
+
+    }
+
+    .gray-button {
+      margin-left: auto;
+      padding: 10px;
+      border: 1px solid #000;
+      background: #ccc;
+      cursor: pointer;
+      margin: 5px
+    }
+    
+    button {
+      padding: 5px 10px;
+      margin: 3px;
+      border: none;
+      background: #ccc;
+      cursor: pointer;
+    }
+    button.active {
+      background: #666;
+      color: #fff;
+    }
+
+    button.options {
+      width: 100%;
+    }
+
+    button.clear {
+      background: #e74c3c;
+      color: #fff;
+      margin-top:10px;
+    }
+
+    #toggleTopBar button {
+      margin-bottom: 5px;
+      color: blue;
+
+    }
+
+    .highlight {background-color: palegoldenrod;
+    padding:2px}
+/*
+    #workspaceColumns {
+      display: flex;
+      gap: 20px;
+    }
+      */
+
+    .image-grid {
+    display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+      margin-top: 20px
+    }
+    .image-card {
+      text-align: center;
+      cursor: grab;
+      position: relative;
+    }
+    .image-card img {
+      width: 100%;
+      min-height: 100px;
+      height: auto;
+      max-height: 150px;
+      object-fit: contain;
+      user-select: none;
+      pointer-events: none;
+    }
+
+/*
+#columns {
+    width: 100%;
+    background-color: lightgray;
+    display: flex;
+}
+
+    #workspaceContainer {
+    position: sticky;
+    top: 0;
+    padding: 10px;
+    z-index: 100;
+}
+*/
+
+.workspace {
+  border: 2px dashed #999;
+  aspect-ratio: 33 / 25;
+  width: 100%;
+  background: #716f6c;
+  position: relative;
+  overflow: hidden;
+  height: auto;
+  user-select: none;
+}
+
+.workspace span, #workspacelabel span {
+     font-family: "Public Sans", serif;
+  font-weight: 900;
+  font-style: normal;
+    font-size: 1400px;
+    color: #31302e;
+    position:absolute;
+    line-height:1;
+ }
+
+    .workspace.fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 9999;
+    }
+    .workspace-card {
+      text-align: center;
+      cursor: grab;
+      position: relative;
+    }
+    .workspace-card img {
+      min-width: 50px;
+      min-height: 50px;
+      height: auto;
+      max-height: 50px;
+      object-fit: contain;
+      user-select: none;
+      pointer-events: none;
+    }
+
+
+
+
+
+    /* Collapsed sidebar layout: hide sidebar and allow workspace to fill */
+    .content-with-sidebars.sidebar-collapsed > *:nth-child(1) {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+       /* 
+    .content-with-sidebars.sidebar-collapsed > *:nth-child(2) {
+      width: 0 !important;
+      max-width: 0 !important;
+      min-width: 0 !important;
+      overflow: visible !important;
+    }
+      */
+
+    /* When the outer #sidebar has .collapsed, completely hide the container but keep toggle button visible via absolute positioning */
+    #sidebar.collapsed {
+      width: 0 !important;
+      min-width: 0 !important;
+      padding: 0 !important;
+      overflow: visible; /* allow toggle button to show outside */
+    }
+    #sidebar.collapsed .sidebar {
+      display: none !important;
+    }
+    #sidebar.collapsed .right-controls {
+      display: flex !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 1002;
+      background: transparent;
+      width: 40px;
+      height: 40px;
+      align-items: center;
+      justify-content: center;
+    }
