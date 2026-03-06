@@ -103,11 +103,12 @@
 
     .right-controls {
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center
     }
     .search-bar {
-      width: 80%;
+      width: 0%;
       padding: 5px;
       margin-bottom:15px;
      display: inline-block
@@ -115,9 +116,11 @@
 
     .view-bar {
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-      justify-content: left
+      flex-direction: row;
+      gap: 5px;
+      margin-top:10px;
+      justify-content: space-between;
+      align-items: flex-end
     }
 
     .instructions p {
@@ -141,7 +144,6 @@
     }
     
     button {
-      margin-right: 5px;
       padding: 5px 10px;
       border: none;
       background: #ccc;
@@ -154,7 +156,8 @@
 
     #toggleTopBar button {
       margin-bottom: 5px;
-      color: blue
+      color: blue;
+
     }
 
     .highlight {background-color: palegoldenrod;
