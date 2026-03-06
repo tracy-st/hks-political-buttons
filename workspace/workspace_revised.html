@@ -205,12 +205,10 @@
         if(cf.searchHex){
           let best = 0;
           i.colors.forEach(c => {
-            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) <= 24){
-              best = Math.max(best, c.proportion);
-            }
+            if(colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) <= cf.tol) best = Math.max(best, c.proportion);
           });
           return best > 0;
-        }
+}
 
         if(cf.clr){
           let best = 0;
@@ -231,8 +229,9 @@
           const score = (img)=>{
             let best=0;
             img.colors.forEach(c=>{
+              // Inside the images.sort block
+              const tol = cf.tol; // Use the slider value regardless of search type
               const dist = cf.searchHex ? colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) : colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr));
-              const tol = cf.searchHex ? 24 : cf.tol;
               if(dist <= tol) best = Math.max(best, c.proportion);
             });
             return best;
@@ -428,7 +427,7 @@
     if(colorPickerEl) colorPickerEl.addEventListener('input', applyFilters);
     if(tolEl) tolEl.addEventListener('input', applyFilters);
     if(searchHexEl) searchHexEl.addEventListener('input', applyFilters);
-    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000'; if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); applyFilters(); });
+    if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{ if(colorPickerEl) colorPickerEl.value='#ff0000';if(searchHexEl) searchHexEl.value=''; if(tolEl){ tolEl.value = 60; document.getElementById('tolValue').textContent = 60; } document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = false); applyFilters(); });
 
     const selectAllDecadesBtn = document.getElementById('selectAllDecades');
     if(selectAllDecadesBtn) selectAllDecadesBtn.addEventListener('click', ()=>{ document.querySelectorAll('#decadeFilters input').forEach(cb => cb.checked = true); renderImages(); });
