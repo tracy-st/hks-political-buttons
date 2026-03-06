@@ -36,6 +36,9 @@
     </div>
      <div id="sidebar" class="sticky">
       <div class="sidebar">
+                      <div>
+                <button id="clearFilters">Clear</button>
+              </div>
           <div class="options">
             <h2>Filter by Color</h2>
             <div class="filters" id="filters"></div>
@@ -46,9 +49,11 @@
               <label style="display:block; margin-top:6px;">Tolerance: <input type="range" id="tolerance" min="0" max="255" value="60"><span id="tolValue">60</span></label><br>
               
                 <!-- removed Color Name filter -->
-              <div>
-                <button id="clearFilters">Clear</button>
-              </div>
+
+                        <div class="options">
+            <h2>Search Titles</h2>
+            <input id="search" placeholder="Search titles..." class="search-bar">
+          </div>
             </div>
           </div>
           <div class="options">

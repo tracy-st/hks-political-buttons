@@ -108,7 +108,7 @@
       align-items: center
     }
     .search-bar {
-      width: 0%;
+      width: 80%;
       padding: 5px;
       margin-bottom:15px;
      display: inline-block
