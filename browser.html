@@ -187,6 +187,27 @@
             outline: none;
             border-color: #666;
         }
+
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        .search-input::placeholder {
+            color: #999;
+        }
     </style>
 </head>
 <body>
@@ -199,6 +220,9 @@
         <div class="filters-header">
             <div class="filters-title">Filters</div>
             <button class="clear-filters" onclick="clearFilters()">Clear All</button>
+        </div>
+        <div class="search-box">
+            <input type="text" id="search-input" class="search-input" placeholder="Search descriptions..." oninput="applyFilters()">
         </div>
         <div class="filters-grid">
             <div class="filter-group">
@@ -351,7 +375,10 @@
                 state: document.getElementById('filter-state').value
             };
 
+            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
+
             const filtered = allButtons.filter(button => {
+                // Apply field filters
                 for (const [field, filterValue] of Object.entries(filters)) {
                     if (!filterValue) continue;
 
@@ -363,6 +390,13 @@
                         if (button[field] !== filterValue) return false;
                     }
                 }
+
+                // Apply search filter
+                if (searchTerm) {
+                    const description = (button.description || '').toLowerCase();
+                    if (!description.includes(searchTerm)) return false;
+                }
+
                 return true;
             });
 
@@ -370,6 +404,7 @@
         }
 
         function clearFilters() {
+            document.getElementById('search-input').value = '';
             ['person', 'year', 'party', 'office', 'state'].forEach(field => {
                 document.getElementById(`filter-${field}`).value = '';
             });
