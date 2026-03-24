@@ -119,6 +119,74 @@
             max-width: 600px;
             margin: 50px auto;
         }
+
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 1400px;
+            margin: 0 auto 30px;
+        }
+
+        .filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .filters-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .clear-filters {
+            padding: 6px 12px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .clear-filters:hover {
+            background: #e0e0e0;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .filter-select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #666;
+        }
     </style>
 </head>
 <body>
@@ -127,12 +195,52 @@
         <div class="stats" id="stats">Loading...</div>
     </div>
 
+    <div class="filters">
+        <div class="filters-header">
+            <div class="filters-title">Filters</div>
+            <button class="clear-filters" onclick="clearFilters()">Clear All</button>
+        </div>
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">Person</label>
+                <select class="filter-select" id="filter-person" onchange="applyFilters()">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Year</label>
+                <select class="filter-select" id="filter-year" onchange="applyFilters()">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Party</label>
+                <select class="filter-select" id="filter-party" onchange="applyFilters()">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Office</label>
+                <select class="filter-select" id="filter-office" onchange="applyFilters()">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">State</label>
+                <select class="filter-select" id="filter-state" onchange="applyFilters()">
+                    <option value="">All</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
     <div id="container">
         <div class="loading-message">Loading collection...</div>
     </div>
 
     <script>
         const IMAGE_URL_TEMPLATE = 'https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/{image_id}/full/,300/0/default.jpg';
+        let allButtons = [];
 
         async function loadButtons() {
             const container = document.getElementById('container');
@@ -163,7 +271,7 @@
                 ];
 
                 // Fetch all JSON files
-                const buttons = await Promise.all(
+                allButtons = await Promise.all(
                     jsonFiles.map(async (file) => {
                         const res = await fetch(`metadata/json/${file}`);
                         return res.json();
@@ -171,27 +279,119 @@
                 );
 
                 // Sort by title
-                buttons.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+                allButtons.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
 
-                // Update stats
-                stats.textContent = `${buttons.length} items`;
+                // Build filter options
+                buildFilterOptions();
 
-                // Render cards
-                container.innerHTML = '';
-                const grid = document.createElement('div');
-                grid.className = 'grid';
-
-                buttons.forEach(button => {
-                    const card = createCard(button);
-                    grid.appendChild(card);
-                });
-
-                container.appendChild(grid);
+                // Initial render
+                renderButtons(allButtons);
 
             } catch (error) {
                 console.error('Error loading buttons:', error);
                 container.innerHTML = `<div class="error-message">Error loading collection: ${error.message}</div>`;
             }
+        }
+
+        function buildFilterOptions() {
+            const fields = ['person', 'year', 'party', 'office', 'state'];
+
+            fields.forEach(field => {
+                const select = document.getElementById(`filter-${field}`);
+                const values = new Set();
+
+                allButtons.forEach(button => {
+                    if (button[field] && button[field] !== null) {
+                        values.add(button[field]);
+                    }
+                });
+
+                // Add special options
+                const hasEmpty = allButtons.some(b => !b[field] || b[field] === null);
+                const hasFilled = allButtons.some(b => b[field] && b[field] !== null);
+
+                if (hasFilled) {
+                    const option = document.createElement('option');
+                    option.value = '__HAS_VALUE__';
+                    option.textContent = '✓ Has value';
+                    select.appendChild(option);
+                }
+
+                if (hasEmpty) {
+                    const option = document.createElement('option');
+                    option.value = '__IS_EMPTY__';
+                    option.textContent = '✗ Is empty';
+                    select.appendChild(option);
+                }
+
+                // Add separator if we have both special options and values
+                if ((hasFilled || hasEmpty) && values.size > 0) {
+                    const option = document.createElement('option');
+                    option.disabled = true;
+                    option.textContent = '──────────';
+                    select.appendChild(option);
+                }
+
+                // Add actual values sorted
+                Array.from(values).sort().forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        function applyFilters() {
+            const filters = {
+                person: document.getElementById('filter-person').value,
+                year: document.getElementById('filter-year').value,
+                party: document.getElementById('filter-party').value,
+                office: document.getElementById('filter-office').value,
+                state: document.getElementById('filter-state').value
+            };
+
+            const filtered = allButtons.filter(button => {
+                for (const [field, filterValue] of Object.entries(filters)) {
+                    if (!filterValue) continue;
+
+                    if (filterValue === '__HAS_VALUE__') {
+                        if (!button[field] || button[field] === null) return false;
+                    } else if (filterValue === '__IS_EMPTY__') {
+                        if (button[field] && button[field] !== null) return false;
+                    } else {
+                        if (button[field] !== filterValue) return false;
+                    }
+                }
+                return true;
+            });
+
+            renderButtons(filtered);
+        }
+
+        function clearFilters() {
+            ['person', 'year', 'party', 'office', 'state'].forEach(field => {
+                document.getElementById(`filter-${field}`).value = '';
+            });
+            renderButtons(allButtons);
+        }
+
+        function renderButtons(buttons) {
+            const container = document.getElementById('container');
+            const stats = document.getElementById('stats');
+
+            stats.textContent = `${buttons.length} of ${allButtons.length} items`;
+
+            container.innerHTML = '';
+            const grid = document.createElement('div');
+            grid.className = 'grid';
+
+            buttons.forEach(button => {
+                const card = createCard(button);
+                grid.appendChild(card);
+            });
+
+            container.appendChild(grid);
         }
 
         function createCard(data) {
