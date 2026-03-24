@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HKS Political Buttons Browser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 300px;
+            background-color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .card-image.loading {
+            color: #999;
+        }
+
+        .card-content {
+            padding: 16px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .card-metadata {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .card-metadata strong {
+            color: #444;
+        }
+
+        .card-description {
+            font-size: 13px;
+            color: #777;
+            margin-top: 12px;
+            line-height: 1.4;
+        }
+
+        .loading-message {
+            text-align: center;
+            color: #666;
+            font-size: 18px;
+            margin-top: 50px;
+        }
+
+        .error-message {
+            text-align: center;
+            color: #d32f2f;
+            font-size: 16px;
+            margin-top: 50px;
+            padding: 20px;
+            background: #ffebee;
+            border-radius: 8px;
+            max-width: 600px;
+            margin: 50px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>HKS Political Buttons Collection</h1>
+        <div class="stats" id="stats">Loading...</div>
+    </div>
+
+    <div id="container">
+        <div class="loading-message">Loading collection...</div>
+    </div>
+
+    <script>
+        const IMAGE_URL_TEMPLATE = 'https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/{image_id}/full/,300/0/default.jpg';
+
+        async function loadButtons() {
+            const container = document.getElementById('container');
+            const stats = document.getElementById('stats');
+
+            try {
+                // List of JSON files
+                const jsonFiles = [
+                    '502297764.json',
+                    '502297761.json',
+                    '502297758.json',
+                    '502297755.json',
+                    '502297752.json',
+                    '502297749.json',
+                    '502297746.json',
+                    '502297743.json',
+                    '502297740.json',
+                    '502297737.json',
+                    '502297734.json',
+                    '502297731.json',
+                    '502297728.json',
+                    '502297725.json',
+                    '502297722.json',
+                    '502297719.json',
+                    '502297716.json',
+                    '502297713.json',
+                    '502297710.json'
+                ];
+
+                // Fetch all JSON files
+                const buttons = await Promise.all(
+                    jsonFiles.map(async (file) => {
+                        const res = await fetch(`metadata/json/${file}`);
+                        return res.json();
+                    })
+                );
+
+                // Sort by title
+                buttons.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
+                // Update stats
+                stats.textContent = `${buttons.length} items`;
+
+                // Render cards
+                container.innerHTML = '';
+                const grid = document.createElement('div');
+                grid.className = 'grid';
+
+                buttons.forEach(button => {
+                    const card = createCard(button);
+                    grid.appendChild(card);
+                });
+
+                container.appendChild(grid);
+
+            } catch (error) {
+                console.error('Error loading buttons:', error);
+                container.innerHTML = `<div class="error-message">Error loading collection: ${error.message}</div>`;
+            }
+        }
+
+        function createCard(data) {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            const imageUrl = IMAGE_URL_TEMPLATE.replace('{image_id}', data.image_id);
+
+            card.innerHTML = `
+                <div class="card-image loading">
+                    <img src="${imageUrl}" alt="${data.title || 'Political button'}"
+                         onload="this.parentElement.classList.remove('loading')"
+                         onerror="this.parentElement.innerHTML='Image unavailable'">
+                </div>
+                <div class="card-content">
+                    <div class="card-title">${data.title || 'Untitled'}</div>
+                    ${data.person ? `<div class="card-metadata"><strong>Person:</strong> ${data.person}</div>` : ''}
+                    ${data.year ? `<div class="card-metadata"><strong>Year:</strong> ${data.year}</div>` : ''}
+                    ${data.party ? `<div class="card-metadata"><strong>Party:</strong> ${data.party}</div>` : ''}
+                    ${data.office ? `<div class="card-metadata"><strong>Office:</strong> ${data.office}</div>` : ''}
+                    ${data.state ? `<div class="card-metadata"><strong>State:</strong> ${data.state}</div>` : ''}
+                    ${data.description ? `<div class="card-description">${data.description}</div>` : ''}
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Load on page load
+        loadButtons();
+    </script>
+</body>
+</html>
