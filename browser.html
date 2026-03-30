@@ -208,24 +208,6 @@
         .search-input::placeholder {
             color: #999;
         }
-
-        .clip-status {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .clip-status.loading {
-            color: #ff9800;
-        }
-
-        .clip-status.ready {
-            color: #4caf50;
-        }
-
-        .clip-status.error {
-            color: #f44336;
-        }
     </style>
 </head>
 <body>
@@ -240,37 +222,36 @@
             <button class="clear-filters" onclick="clearFilters()">Clear All</button>
         </div>
         <div class="search-box">
-            <input type="text" id="search-input" class="search-input" placeholder="Search descriptions..." oninput="debouncedApplyFilters()">
-            <div id="clip-status" class="clip-status"></div>
+            <input type="text" id="search-input" class="search-input" placeholder="Search descriptions..." oninput="applyFilters()">
         </div>
         <div class="filters-grid">
             <div class="filter-group">
                 <label class="filter-label">Person</label>
-                <select class="filter-select" id="filter-person" onchange="handleFilterChange()">
+                <select class="filter-select" id="filter-person" onchange="applyFilters()">
                     <option value="">All</option>
                 </select>
             </div>
             <div class="filter-group">
                 <label class="filter-label">Year</label>
-                <select class="filter-select" id="filter-year" onchange="handleFilterChange()">
+                <select class="filter-select" id="filter-year" onchange="applyFilters()">
                     <option value="">All</option>
                 </select>
             </div>
             <div class="filter-group">
                 <label class="filter-label">Party</label>
-                <select class="filter-select" id="filter-party" onchange="handleFilterChange()">
+                <select class="filter-select" id="filter-party" onchange="applyFilters()">
                     <option value="">All</option>
                 </select>
             </div>
             <div class="filter-group">
                 <label class="filter-label">Office</label>
-                <select class="filter-select" id="filter-office" onchange="handleFilterChange()">
+                <select class="filter-select" id="filter-office" onchange="applyFilters()">
                     <option value="">All</option>
                 </select>
             </div>
             <div class="filter-group">
                 <label class="filter-label">State</label>
-                <select class="filter-select" id="filter-state" onchange="handleFilterChange()">
+                <select class="filter-select" id="filter-state" onchange="applyFilters()">
                     <option value="">All</option>
                 </select>
             </div>
@@ -281,84 +262,9 @@
         <div class="loading-message">Loading collection...</div>
     </div>
 
-    <script type="module">
-        import { AutoTokenizer, CLIPTextModelWithProjection, AutoProcessor, CLIPVisionModelWithProjection, RawImage } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
-
+    <script>
         const IMAGE_URL_TEMPLATE = 'https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/{image_id}/full/,300/0/default.jpg';
-
         let allButtons = [];
-        let textEmbeddings = [];
-        let imageEmbeddings = [];
-        let clipReady = false;
-        let tokenizer, textModel, processor, visionModel;
-
-        // Initialize CLIP models
-        async function initCLIP() {
-            try {
-                console.log('Loading CLIP models...');
-                const modelName = 'Xenova/clip-vit-base-patch32';
-
-                [tokenizer, textModel, processor, visionModel] = await Promise.all([
-                    AutoTokenizer.from_pretrained(modelName),
-                    CLIPTextModelWithProjection.from_pretrained(modelName),
-                    AutoProcessor.from_pretrained(modelName),
-                    CLIPVisionModelWithProjection.from_pretrained(modelName)
-                ]);
-
-                clipReady = true;
-                console.log('CLIP models loaded successfully');
-                return true;
-            } catch (error) {
-                console.error('Failed to load CLIP:', error);
-                return false;
-            }
-        }
-
-        async function computeTextEmbedding(text) {
-            const inputs = await tokenizer(text, { padding: true, truncation: true });
-            const { text_embeds } = await textModel(inputs);
-            return Array.from(text_embeds.data);
-        }
-
-        async function computeImageEmbedding(imageUrl) {
-            try {
-                const image = await RawImage.fromURL(imageUrl);
-                const inputs = await processor(image);
-                const { image_embeds } = await visionModel(inputs);
-                return Array.from(image_embeds.data);
-            } catch (error) {
-                console.error('Error computing image embedding:', error);
-                return null;
-            }
-        }
-
-        function cosineSimilarity(a, b) {
-            if (!a || !b || a.length !== b.length) return 0;
-
-            let dotProduct = 0;
-            let normA = 0;
-            let normB = 0;
-
-            for (let i = 0; i < a.length; i++) {
-                dotProduct += a[i] * b[i];
-                normA += a[i] * a[i];
-                normB += b[i] * b[i];
-            }
-
-            return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-        }
-
-        // Debounce function for search
-        let searchTimeout;
-        function debouncedApplyFilters() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => applyFilters(), 300);
-        }
-
-        // Handle filter dropdown changes
-        function handleFilterChange() {
-            applyFilters();
-        }
 
         async function loadButtons() {
             const container = document.getElementById('container');
@@ -378,69 +284,9 @@
                 // Initial render
                 renderButtons(allButtons);
 
-                // Initialize CLIP and compute embeddings in background
-                computeEmbeddings();
-
             } catch (error) {
                 console.error('Error loading buttons:', error);
                 container.innerHTML = `<div class="error-message">Error loading collection: ${error.message}</div>`;
-            }
-        }
-
-        function updateStatus(message, type = 'loading') {
-            const status = document.getElementById('clip-status');
-            status.textContent = message;
-            status.className = `clip-status ${type}`;
-        }
-
-        async function computeEmbeddings() {
-            const searchInput = document.getElementById('search-input');
-
-            try {
-                updateStatus('Loading CLIP models (this may take a minute)...', 'loading');
-
-                // Initialize CLIP models
-                await initCLIP();
-
-                if (!clipReady) {
-                    updateStatus('Semantic search unavailable - using text-only search', 'error');
-                    searchInput.placeholder = 'Search descriptions...';
-                    return;
-                }
-
-                // Compute text embeddings for descriptions
-                updateStatus('Computing text embeddings...', 'loading');
-                textEmbeddings = await Promise.all(
-                    allButtons.map(async (button) => {
-                        const text = button.description || button.title || '';
-                        return await computeTextEmbedding(text);
-                    })
-                );
-                console.log('Text embeddings computed:', textEmbeddings.length);
-
-                // Compute image embeddings
-                updateStatus('Computing image embeddings...', 'loading');
-                const embedResults = await Promise.allSettled(
-                    allButtons.map(async (button) => {
-                        const imageUrl = IMAGE_URL_TEMPLATE.replace('{image_id}', button.image_id);
-                        return await computeImageEmbedding(imageUrl);
-                    })
-                );
-
-                imageEmbeddings = embedResults.map(result =>
-                    result.status === 'fulfilled' ? result.value : null
-                );
-
-                const successCount = imageEmbeddings.filter(e => e !== null).length;
-                console.log(`Image embeddings computed: ${successCount}/${allButtons.length} successful`);
-
-                updateStatus(`✓ Semantic search ready (text + images)`, 'ready');
-                searchInput.placeholder = 'Try semantic search: "fruit", "bird", "peace", etc.';
-
-            } catch (error) {
-                console.error('Error computing embeddings:', error);
-                updateStatus('Error loading semantic search - using text-only', 'error');
-                searchInput.placeholder = 'Search descriptions...';
             }
         }
 
@@ -493,7 +339,7 @@
             });
         }
 
-        async function applyFilters() {
+        function applyFilters() {
             const filters = {
                 person: document.getElementById('filter-person').value,
                 year: document.getElementById('filter-year').value,
@@ -502,10 +348,10 @@
                 state: document.getElementById('filter-state').value
             };
 
-            const searchTerm = document.getElementById('search-input').value.trim();
+            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
 
-            // Apply field filters first
-            let filtered = allButtons.filter((button, idx) => {
+            const filtered = allButtons.filter(button => {
+                // Apply field filters
                 for (const [field, filterValue] of Object.entries(filters)) {
                     if (!filterValue) continue;
 
@@ -517,71 +363,20 @@
                         if (button[field] !== filterValue) return false;
                     }
                 }
+
+                // Apply search filter
+                if (searchTerm) {
+                    const description = (button.description || '').toLowerCase();
+                    if (!description.includes(searchTerm)) return false;
+                }
+
                 return true;
             });
-
-            // Apply semantic search if available and query exists
-            if (searchTerm && clipReady && textEmbeddings.length > 0) {
-                try {
-                    console.log('Running semantic search for:', searchTerm);
-                    const queryEmbedding = await computeTextEmbedding(searchTerm);
-
-                    // Calculate similarity scores
-                    const scored = filtered.map((button, idx) => {
-                        const buttonIdx = allButtons.indexOf(button);
-
-                        // Compute similarity with text and image
-                        const textSim = textEmbeddings[buttonIdx]
-                            ? cosineSimilarity(queryEmbedding, textEmbeddings[buttonIdx])
-                            : 0;
-                        const imageSim = imageEmbeddings[buttonIdx]
-                            ? cosineSimilarity(queryEmbedding, imageEmbeddings[buttonIdx])
-                            : 0;
-
-                        // Combined score (weighted average - favor text more)
-                        const score = textSim * 0.6 + imageSim * 0.4;
-
-                        return { button, score, textSim, imageSim };
-                    });
-
-                    // Sort by score
-                    scored.sort((a, b) => b.score - a.score);
-
-                    // Debug: show top 5 scores
-                    console.log('Top 5 results:');
-                    scored.slice(0, 5).forEach(item => {
-                        console.log(`- ${item.button.title}: score=${item.score.toFixed(3)} (text=${item.textSim.toFixed(3)}, image=${item.imageSim.toFixed(3)})`);
-                    });
-
-                    // Filter by similarity threshold and sort
-                    filtered = scored
-                        .filter(item => item.score > 0.15)  // Lower threshold for more results
-                        .map(item => item.button);
-
-                    console.log(`Found ${filtered.length} results above threshold`);
-
-                } catch (error) {
-                    console.error('Semantic search error:', error);
-                    // Fall back to basic text search
-                    const searchLower = searchTerm.toLowerCase();
-                    filtered = filtered.filter(button => {
-                        const description = (button.description || '').toLowerCase();
-                        return description.includes(searchLower);
-                    });
-                }
-            } else if (searchTerm) {
-                // Basic text search fallback
-                const searchLower = searchTerm.toLowerCase();
-                filtered = filtered.filter(button => {
-                    const description = (button.description || '').toLowerCase();
-                    return description.includes(searchLower);
-                });
-            }
 
             renderButtons(filtered);
         }
 
-        async function clearFilters() {
+        function clearFilters() {
             document.getElementById('search-input').value = '';
             ['person', 'year', 'party', 'office', 'state'].forEach(field => {
                 document.getElementById(`filter-${field}`).value = '';
@@ -632,11 +427,6 @@
 
             return card;
         }
-
-        // Make functions globally accessible for HTML event handlers
-        window.debouncedApplyFilters = debouncedApplyFilters;
-        window.handleFilterChange = handleFilterChange;
-        window.clearFilters = clearFilters;
 
         // Load on page load
         loadButtons();
