@@ -271,36 +271,10 @@
             const stats = document.getElementById('stats');
 
             try {
-                // List of JSON files
-                const jsonFiles = [
-                    '502297764.json',
-                    '502297761.json',
-                    '502297758.json',
-                    '502297755.json',
-                    '502297752.json',
-                    '502297749.json',
-                    '502297746.json',
-                    '502297743.json',
-                    '502297740.json',
-                    '502297737.json',
-                    '502297734.json',
-                    '502297731.json',
-                    '502297728.json',
-                    '502297725.json',
-                    '502297722.json',
-                    '502297719.json',
-                    '502297716.json',
-                    '502297713.json',
-                    '502297710.json'
-                ];
-
-                // Fetch all JSON files
-                allButtons = await Promise.all(
-                    jsonFiles.map(async (file) => {
-                        const res = await fetch(`metadata/json/${file}`);
-                        return res.json();
-                    })
-                );
+                // Fetch merged buttons file
+                const res = await fetch('metadata/merged_buttons.json');
+                allButtons = await res.json();
+               
 
                 // Sort by title
                 allButtons.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
