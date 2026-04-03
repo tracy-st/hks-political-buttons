@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Political Buttons Image Workspace - Vue.js</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #f5f5f5;
+      --bg-secondary: #fff;
+      --text-primary: #000;
+      --text-secondary: #666;
+      --text-tertiary: #333;
+      --border-color: #999;
+      --button-bg: #ccc;
+      --button-hover: #bbb;
+      --button-active: #666;
+      --button-active-text: #fff;
+      --button-danger: #e74c3c;
+      --workspace-bg: #716f6c;
+      --workspace-label: #31302e;
+      --modal-overlay: rgba(0,0,0,0.5);
+      --highlight-bg: palegoldenrod;
+      --sidebar-toggle: blue;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #1a1a1a;
+      --bg-secondary: #2d2d2d;
+      --text-primary: #fff;
+      --text-secondary: #ccc;
+      --text-tertiary: #ddd;
+      --border-color: #555;
+      --button-bg: #404040;
+      --button-hover: #505050;
+      --button-active: #666;
+      --button-active-text: #fff;
+      --button-danger: #e74c3c;
+      --workspace-bg: #404040;
+      --workspace-label: #666;
+      --modal-overlay: rgba(0,0,0,0.8);
+      --highlight-bg: #8b7d00;
+      --sidebar-toggle: #66aaff;
+    }
+
+    * {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
+    body {
+      font-family: "Public Sans", sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    h2 {
+      margin: 0;
+      color: var(--text-primary);
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      padding: 8px 16px;
+      background: var(--button-bg);
+      color: var(--text-primary);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .theme-toggle:hover {
+      background: var(--button-hover);
+    }
+
+    .options {
+      display: flex;
+      justify-content: flex-start;
+      flex-direction: column
+    }
+
+    .sticky {
+      position: sticky;
+      top: 0;
+      background: var(--bg-secondary);
+      padding: 10px;
+      z-index: 1000;
+    }
+
+    .content-with-sidebars {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: flex-start;
+    }
+
+    .content-with-sidebars > * {
+      max-width: 50%;
+      padding: 1rem;
+    }
+
+    @media (min-width:768px) {
+      .content-with-sidebars > * {
+        width: 50%;
+      }
+      .content-with-sidebars > *:nth-child(1) {
+        width: 100%;
+      }
+    }
+
+    @media (min-width:1024px) {
+      .content-with-sidebars > * {
+        width: 25%;
+      }
+      .content-with-sidebars > *:nth-child(1) {
+        width: 50%;
+      }
+      .content-with-sidebars > *:nth-child(2) {
+        order: -1;
+      }
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        padding: 10px
+      }
+    }
+
+    #sidebar {
+      max-width: 15%
+    }
+
+    #workspaceContainer.sticky,
+    #sidebar.sticky {
+      position: sticky;
+      top: 20px;
+      align-self: flex-start;
+      z-index: 1000;
+      background: var(--bg-secondary);
+      padding: 10px;
+    }
+
+    .sidebar.collapsed {
+      width: 40px !important;
+      min-width: 40px !important;
+      overflow: hidden;
+    }
+
+    .sidebar.collapsed > div:not(.sidebar-toggle-container) {
+      display: none;
+    }
+
+    .right-controls {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center
+    }
+
+    .search-bar {
+      width: 80%;
+      padding: 8px;
+      margin-bottom: 15px;
+      display: inline-block;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-radius: 4px;
+    }
+
+    input[type="range"] {
+      width: 80%;
+    }
+
+    input[type="color"] {
+      padding: 2px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+    }
+
+    .view-bar {
+      display: flex;
+      flex-direction: row;
+      gap: 5px;
+      margin-top: 10px;
+      justify-content: space-between;
+      align-items: flex-end
+    }
+
+    .ctrl-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    h2 {
+      font-size: 1.1em;
+    }
+
+    .filters {
+      margin-left: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin: 3px;
+      border: none;
+      background: var(--button-bg);
+      color: var(--text-primary);
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background: var(--button-hover);
+    }
+
+    button.active {
+      background: var(--button-active);
+      color: var(--button-active-text);
+    }
+
+    button.clear {
+      background: var(--button-danger);
+      color: white;
+      margin-top: 10px;
+    }
+
+    button.clear:hover {
+      background: #c0392b;
+    }
+
+    .sidebar-toggle {
+      color: var(--sidebar-toggle);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    .highlight {
+      background-color: var(--highlight-bg);
+      padding: 2px;
+    }
+
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+      margin-top: 20px
+    }
+
+    .image-card {
+      text-align: center;
+      cursor: grab;
+      position: relative;
+      background: var(--bg-secondary);
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+
+    .image-card:hover {
+      border-color: var(--button-active);
+    }
+
+    .image-card img {
+      width: 100%;
+      min-height: 100px;
+      height: auto;
+      max-height: 150px;
+      object-fit: contain;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .swatches {
+      margin: 6px 0;
+    }
+
+    .workspace {
+      border: 2px dashed var(--border-color);
+      aspect-ratio: 33 / 25;
+      width: 100%;
+      background: var(--workspace-bg);
+      position: relative;
+      overflow: hidden;
+      height: auto;
+      user-select: none;
+    }
+
+    .workspace span, #workspaceLabel {
+      font-family: "Public Sans", serif;
+      font-weight: 900;
+      font-style: normal;
+      font-size: 1400px;
+      color: var(--workspace-label);
+      position: absolute;
+      line-height: 1;
+    }
+
+    .workspace-card {
+      text-align: center;
+      cursor: grab;
+      position: relative;
+    }
+
+    .workspace-card img {
+      min-width: 50px;
+      min-height: 50px;
+      height: auto;
+      max-height: 50px;
+      object-fit: contain;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .content-with-sidebars.sidebar-collapsed > *:nth-child(1) {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    #sidebar.collapsed {
+      width: 0 !important;
+      min-width: 0 !important;
+      padding: 0 !important;
+      overflow: visible;
+    }
+
+    #sidebar.collapsed .sidebar {
+      display: none !important;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--modal-overlay);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: var(--bg-secondary);
+      padding: 20px;
+      border-radius: 8px;
+      max-height: 80%;
+      max-width: 80%;
+      overflow: auto;
+      color: var(--text-primary);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background: var(--button-bg);
+      font-weight: 600;
+    }
+
+    .result-count {
+      padding: 10px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .decade-filters label {
+      display: block;
+      margin: 4px 0;
+      cursor: pointer;
+    }
+
+    .decade-filters input[type="checkbox"] {
+      margin-right: 8px;
+    }
+
+    .fade-enter-active, .fade-leave-active {
+      transition: opacity 0.3s;
+    }
+    .fade-enter-from, .fade-leave-to {
+      opacity: 0;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+
+    .error {
+      color: var(--button-danger);
+      padding: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <button
+      class="theme-toggle"
+      @click="toggleTheme"
+      :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+    >
+      {{ isDarkMode ? '☀️' : '🌙' }}
+    </button>
+
+    <div class="container">
+      <div
+        id="workspaceColumns"
+        class="content-with-sidebars"
+        :class="{ 'sidebar-collapsed': sidebarCollapsed }"
+      >
+        <!-- Workspace Container -->
+        <div id="workspaceContainer" class="sticky">
+          <div class="right-controls">
+            <button
+              id="toggleTopBar"
+              class="sidebar-toggle"
+              @click="toggleSidebar"
+            >
+              {{ sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar' }}
+            </button>
+
+            <button @click="zoomIn" class="ctrl-btn">Zoom In (+)</button>
+            <div class="ctrl-btn">{{ Math.round(zoom * 100) }}%</div>
+            <button @click="zoomOut" class="ctrl-btn">Zoom Out (-)</button>
+            <button @click="resetZoom" class="ctrl-btn">Reset View</button>
+            <h2>Workspace</h2>
+          </div>
+
+          <div
+            class="workspace"
+            ref="workspace"
+            @dragover.prevent
+            @drop="handleDrop"
+            @mousedown="startPanning"
+            @wheel.prevent="handleWheel"
+          >
+            <div
+              ref="workspaceInner"
+              :style="workspaceTransform"
+              style="position:relative; width:1200px; height:800px; overflow:visible;"
+            >
+              <div
+                style="position:absolute; left:0; top:0; width:1200px; height:800px; pointer-events:none;"
+              >
+                <span id="workspaceLabel">HKS</span>
+              </div>
+
+              <div
+                v-for="item in workspaceItems"
+                :key="item.id"
+                class="workspace-card"
+                :style="{
+                  position: 'absolute',
+                  left: item.x + 'px',
+                  top: item.y + 'px',
+                  zIndex: item.dragging ? 1000 : 'auto'
+                }"
+                @mousedown="startDragging($event, item)"
+              >
+                <img
+                  :src="item.url"
+                  :alt="item.name"
+                  :style="{ width: (item.width * 5) + 'px' }"
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="view-bar">
+            <button @click="showWorkspaceList = true">View Workspace as List</button>
+            <button @click="toggleFullscreen">
+              {{ isFullscreen ? 'Exit Full Screen' : 'View Workspace Full Screen' }}
+            </button>
+            <button @click="showInstructions = true">Instructions</button>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div
+          id="sidebar"
+          class="sticky"
+          :class="{ collapsed: sidebarCollapsed }"
+        >
+          <div class="sidebar">
+            <div class="options">
+              <h2>Filter by Color</h2>
+              <div class="color-filters">
+                <label>
+                  Color:
+                  <input
+                    type="color"
+                    v-model="colorFilter"
+                    @input="applyFilters"
+                  >
+                </label><br>
+
+                <input
+                  v-model="searchHex"
+                  @input="applyFilters"
+                  class="search-bar"
+                  placeholder="Search Hex (e.g. #rrggbb)"
+                >
+
+                <label style="display:block; margin-top:6px;">
+                  Tolerance:
+                  <input
+                    type="range"
+                    v-model="tolerance"
+                    @input="applyFilters"
+                    min="0"
+                    max="255"
+                  >
+                  <span>{{ tolerance }}</span>
+                </label><br>
+              </div>
+
+              <div class="options">
+                <h2>Search Titles</h2>
+                <input
+                  v-model="searchTitle"
+                  @input="applyFilters"
+                  placeholder="Search titles..."
+                  class="search-bar"
+                >
+              </div>
+
+              <div class="options">
+                <h2>Search Metadata</h2>
+                <input
+                  v-model="searchMetadata"
+                  @input="applyFilters"
+                  placeholder="Search person, party, office..."
+                  class="search-bar"
+                >
+              </div>
+            </div>
+
+            <div class="options">
+              <h2>Decade (show only):</h2>
+              <div class="decade-filters">
+                <label
+                  v-for="decade in availableDecades"
+                  :key="decade.value"
+                  :data-decade="decade.value"
+                >
+                  <input
+                    type="checkbox"
+                    :value="decade.value"
+                    v-model="selectedDecades"
+                    @change="applyFilters"
+                  >
+                  {{ decade.value }}s ({{ decade.filteredCount }})
+                </label>
+              </div>
+
+              <div class="options">
+                <button @click="selectAllDecades">Select All Decades</button>
+                <button @click="deselectAllDecades">Deselect All Decades</button>
+              </div>
+            </div>
+
+            <div class="options">
+              <button @click="clearAllFilters" class="clear">Clear all Filters</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Grid -->
+        <div id="gridContainer">
+          <div class="result-count">{{ filteredImages.length }} / {{ images.length }} results</div>
+
+          <div v-if="loading" class="loading">
+            Loading images...
+          </div>
+
+          <div v-else-if="error" class="error">
+            {{ error }}
+          </div>
+
+          <div v-else class="image-grid">
+            <div
+              v-for="img in filteredImages"
+              :key="img.id"
+              class="image-card"
+              draggable="true"
+              @dragstart="handleDragStart($event, img)"
+              @click="addToWorkspace(img, 100, 100)"
+            >
+              <img :src="img.url" :alt="img.name">
+
+              <div class="swatches">
+                <span
+                  v-for="(color, index) in img.colors.slice(0, 5)"
+                  :key="index"
+                  :style="{
+                    display: 'inline-block',
+                    width: '18px',
+                    height: '18px',
+                    background: color.hex,
+                    marginRight: '6px',
+                    border: '1px solid #fff'
+                  }"
+                  :title="`${color.hex} — ${Math.round(color.proportion * 100)}%`"
+                ></span>
+              </div>
+
+              <div
+                style="margin-top: 6px; cursor: pointer;"
+                @click.stop="openImageModal(img)"
+              >
+                {{ img.name }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workspace List Modal -->
+      <transition name="fade">
+        <div v-if="showWorkspaceList" class="modal" @click.self="showWorkspaceList = false">
+          <div class="modal-content">
+            <h3>Workspace Items</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Thumbnail</th>
+                  <th>Title</th>
+                  <th>ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="workspaceItems.length === 0">
+                  <td colspan="3">No items in workspace</td>
+                </tr>
+                <tr v-for="item in workspaceItems" :key="item.id">
+                  <td>
+                    <img :src="item.url" style="width: 60px; height: auto;">
+                  </td>
+                  <td>{{ item.name }}</td>
+                  <td>{{ item.id }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <button @click="downloadCSV" style="margin-top: 10px;">Download CSV</button>
+            <button @click="showWorkspaceList = false" style="margin-top: 10px;">Close</button>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Instructions Modal -->
+      <transition name="fade">
+        <div v-if="showInstructions" class="modal" @click.self="showInstructions = false">
+          <div class="modal-content">
+            <h3>Instructions</h3>
+            <p>Use the color filters, decade filters, and search bar to find images by their dominant colors, creation decade, and titles.</p>
+            <p>Click on an image to add it to the workspace. You can also drag and drop images into the workspace.</p>
+            <p>In the workspace, you can drag images around. To remove an image, drag it outside the workspace area.</p>
+            <p>You can pan the workspace by clicking and dragging on empty space.</p>
+            <p><span class="highlight">View Workspace Full Screen</span> Expand the workspace to full screen for easier arrangement of images.</p>
+            <p><span class="highlight">View Workspace as List</span>: See a tabular view of all images currently in the workspace, with an option to download the list as a CSV file.</p>
+            <p><span class="highlight">Theme Toggle</span>: Use the button in the top-right corner to switch between light and dark modes.</p>
+            <button @click="showInstructions = false" style="margin-top: 10px;">Close</button>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Image Detail Modal -->
+      <transition name="fade">
+        <div v-if="showImageModal" class="modal" @click.self="showImageModal = false">
+          <div class="modal-content">
+            <img :src="selectedImage?.url" style="max-width: 100%; height: auto; display: block; margin-bottom: 10px;">
+
+            <div v-if="selectedImage" style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+              <div style="margin-bottom: 6px;"><strong>Title:</strong> {{ selectedImage.name || 'N/A' }}</div>
+              <div style="margin-bottom: 6px;"><strong>Earliest Date:</strong> {{ selectedImage.earliest_date || 'N/A' }}</div>
+              <div style="margin-bottom: 6px;"><strong>Person:</strong> {{ selectedImage.person || 'N/A' }}</div>
+              <div style="margin-bottom: 6px;"><strong>Party:</strong> {{ selectedImage.party || 'N/A' }}</div>
+              <div style="margin-bottom: 6px;"><strong>Office:</strong> {{ selectedImage.office || 'N/A' }}</div>
+            </div>
+
+            <div style="margin-bottom: 6px; font-weight: bold;">Colors:</div>
+
+            <div v-if="selectedImage">
+              <div
+                v-for="color in selectedImage.colors"
+                :key="color.hex"
+                style="margin-bottom: 6px;"
+              >
+                <span
+                  :style="{
+                    display: 'inline-block',
+                    width: '24px',
+                    height: '24px',
+                    background: color.hex,
+                    border: '1px solid #000',
+                    verticalAlign: 'middle',
+                    marginRight: '8px'
+                  }"
+                ></span>
+                <strong>{{ color.hex }}</strong> — {{ Math.round(color.proportion * 100) }}%
+              </div>
+            </div>
+
+            <button @click="showImageModal = false" style="margin-top: 10px;">Close</button>
+          </div>
+        </div>
+      </transition>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <script>
+    const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+    createApp({
+      setup() {
+        // Theme management
+        const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
+
+        // Data
+        const images = ref([]);
+        const loading = ref(true);
+        const error = ref('');
+
+        // Workspace
+        const workspaceItems = ref([]);
+        const zoom = ref(0.3);
+        const panX = ref(0);
+        const panY = ref(0);
+
+        // UI State
+        const sidebarCollapsed = ref(false);
+        const isFullscreen = ref(false);
+        const showWorkspaceList = ref(false);
+        const showInstructions = ref(false);
+        const showImageModal = ref(false);
+        const selectedImage = ref(null);
+
+        // Filters
+        const colorFilter = ref('#ff0000');
+        const colorFilterActive = ref(false); // Track if user has used color picker
+        const searchHex = ref('');
+        const tolerance = ref(60);
+        const searchTitle = ref('');
+        const searchMetadata = ref('');
+        const selectedDecades = ref([]);
+
+        // Dragging state
+        const isPanning = ref(false);
+        const panLastX = ref(0);
+        const panLastY = ref(0);
+        const isDragging = ref(false);
+        const dragItem = ref(null);
+        const dragOffsetX = ref(0);
+        const dragOffsetY = ref(0);
+
+        // Refs
+        const workspace = ref(null);
+        const workspaceInner = ref(null);
+
+        // Computed properties
+        const workspaceTransform = computed(() => {
+          return {
+            transform: `translate(${panX.value * zoom.value}px, ${panY.value * zoom.value}px) scale(${zoom.value})`,
+            transformOrigin: '0 0'
+          };
+        });
+
+        const availableDecades = computed(() => {
+          const decadeCounts = {};
+          const filteredDecadeCounts = {};
+
+          // Count all decades
+          images.value.forEach(img => {
+            const date = img.earliest_date;
+            if (date && /^\d{4}$/.test(date)) {
+              const year = parseInt(date);
+              const decade = Math.floor(year / 10) * 10;
+              decadeCounts[decade] = (decadeCounts[decade] || 0) + 1;
+            }
+          });
+
+          // Count filtered decades
+          filteredImages.value.forEach(img => {
+            const date = img.earliest_date;
+            if (date && /^\d{4}$/.test(date)) {
+              const year = parseInt(date);
+              const decade = Math.floor(year / 10) * 10;
+              filteredDecadeCounts[decade] = (filteredDecadeCounts[decade] || 0) + 1;
+            }
+          });
+
+          return Object.keys(decadeCounts)
+            .map(d => parseInt(d))
+            .sort((a, b) => a - b)
+            .map(decade => ({
+              value: decade,
+              totalCount: decadeCounts[decade],
+              filteredCount: filteredDecadeCounts[decade] || 0
+            }));
+        });
+
+        const filteredImages = computed(() => {
+          let filtered = images.value.filter(img => {
+            // Title search
+            if (searchTitle.value && !img.name.toLowerCase().includes(searchTitle.value.toLowerCase())) {
+              return false;
+            }
+
+            // Metadata search
+            if (searchMetadata.value) {
+              const term = searchMetadata.value.toLowerCase();
+              const personMatch = (img.person || '').toLowerCase().includes(term);
+              const partyMatch = (img.party || '').toLowerCase().includes(term);
+              const officeMatch = (img.office || '').toLowerCase().includes(term);
+              if (!personMatch && !partyMatch && !officeMatch) {
+                return false;
+              }
+            }
+
+            // Decade filter
+            if (selectedDecades.value.length > 0) {
+              const date = img.earliest_date;
+              if (date && /^\d{4}$/.test(date)) {
+                const year = parseInt(date);
+                const decade = Math.floor(year / 10) * 10;
+                if (!selectedDecades.value.includes(decade)) {
+                  return false;
+                }
+              } else {
+                return false;
+              }
+            }
+
+            // Color filter
+            if (!colorFilter.value && !searchHex.value) {
+              return true;
+            }
+
+            const targetColor = searchHex.value || colorFilter.value;
+            if (!targetColor) return true;
+
+            let bestMatch = 0;
+            img.colors.forEach(color => {
+              if (colorDistance(hexToRgb(color.hex), hexToRgb(targetColor)) <= tolerance.value) {
+                bestMatch = Math.max(bestMatch, color.proportion);
+              }
+            });
+
+            return bestMatch > 0;
+          });
+
+          // Sort by color match if color filter is active
+          if (colorFilter.value || searchHex.value) {
+            const targetColor = searchHex.value || colorFilter.value;
+            filtered.sort((a, b) => {
+              const scoreA = getColorScore(a, targetColor);
+              const scoreB = getColorScore(b, targetColor);
+              return scoreB - scoreA;
+            });
+          }
+
+          return filtered;
+        });
+
+        // Methods
+        const toggleTheme = () => {
+          isDarkMode.value = !isDarkMode.value;
+          localStorage.setItem('darkMode', isDarkMode.value.toString());
+          updateTheme();
+        };
+
+        const updateTheme = () => {
+          document.documentElement.setAttribute('data-theme', isDarkMode.value ? 'dark' : 'light');
+        };
+
+        const buildIIIFUrl = (iiifId) => {
+          if (!iiifId) return '';
+          return `https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/${iiifId}/full/,300/0/default.jpg`;
+        };
+
+        const loadCSV = async () => {
+          try {
+            loading.value = true;
+            const response = await fetch('data/hks_buttons_new.csv');
+            const text = await response.text();
+            const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+
+            const byImage = {};
+            parsed.data.forEach(row => {
+              const iiifId = (row.iiifid || '').trim();
+              if (!iiifId) return;
+
+              if (!byImage[iiifId]) {
+                byImage[iiifId] = {
+                  iiifId: iiifId,
+                  id: iiifId,
+                  w_cm: row.wcm || '',
+                  title: row.name || '',
+                  earliest_date: row.earliest_date || '',
+                  person: row.person || '',
+                  party: row.party || '',
+                  office: row.office || '',
+                  raw: []
+                };
+              }
+
+              byImage[iiifId].raw.push({ color: row.Hex, proportion: row.frequency });
+            });
+
+            images.value = Object.keys(byImage).map((k, idx) => {
+              const g = byImage[k];
+              g.raw.sort((a, b) => (parseFloat(b.proportion) || 0) - (parseFloat(a.proportion) || 0));
+              const colors = g.raw
+                .map(rr => ({ hex: (rr.color || ''), proportion: parseFloat(rr.proportion) || 0 }))
+                .filter(c => c.hex);
+
+              return {
+                id: g.id || `img-${idx}`,
+                name: g.title || `Image ${idx + 685}`,
+                width: parseFloat(g.w_cm) || 3,
+                iiifId: g.iiifId,
+                url: buildIIIFUrl(g.iiifId),
+                colors,
+                earliest_date: g.earliest_date,
+                person: g.person,
+                party: g.party,
+                office: g.office
+              };
+            });
+
+            loading.value = false;
+          } catch (err) {
+            error.value = 'Failed to load data: ' + err.message;
+            loading.value = false;
+          }
+        };
+
+        // Color utilities
+        const hexToRgb = (hex) => {
+          if (!hex) return { r: 0, g: 0, b: 0 };
+          hex = hex.replace('#', '');
+          if (hex.length === 3) {
+            hex = hex.split('').map(ch => ch + ch).join('');
+          }
+          const n = parseInt(hex, 16);
+          return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+        };
+
+        const colorDistance = (a, b) => {
+          const dr = a.r - b.r;
+          const dg = a.g - b.g;
+          const db = a.b - b.b;
+          return Math.sqrt(dr * dr + dg * dg + db * db);
+        };
+
+        const getColorScore = (img, targetColor) => {
+          let best = 0;
+          img.colors.forEach(color => {
+            if (colorDistance(hexToRgb(color.hex), hexToRgb(targetColor)) <= tolerance.value) {
+              best = Math.max(best, color.proportion);
+            }
+          });
+          return best;
+        };
+
+        // Workspace methods
+        const screenToLogical = (clientX, clientY) => {
+          const rect = workspace.value.getBoundingClientRect();
+          const sx = (clientX - rect.left) / zoom.value;
+          const sy = (clientY - rect.top) / zoom.value;
+          return { lx: sx - panX.value, ly: sy - panY.value };
+        };
+
+        const addToWorkspace = (img, x = 50, y = 50) => {
+          if (workspaceItems.value.some(item => item.id === img.id)) {
+            return;
+          }
+
+          workspaceItems.value.push({
+            id: img.id,
+            name: img.name,
+            url: img.url,
+            width: img.width,
+            x: x,
+            y: y,
+            dragging: false
+          });
+        };
+
+        const removeFromWorkspace = (itemId) => {
+          const index = workspaceItems.value.findIndex(item => item.id === itemId);
+          if (index > -1) {
+            workspaceItems.value.splice(index, 1);
+          }
+        };
+
+        // Event handlers
+        const handleDragStart = (event, img) => {
+          event.dataTransfer.setData('id', img.id);
+        };
+
+        const handleDrop = (event) => {
+          event.preventDefault();
+          const id = event.dataTransfer.getData('id');
+          const img = images.value.find(i => i.id === id);
+          if (img) {
+            const logical = screenToLogical(event.clientX, event.clientY);
+            addToWorkspace(img, logical.lx, logical.ly);
+          }
+        };
+
+        const startPanning = (event) => {
+          if (event.target.closest('.workspace-card')) return;
+          isPanning.value = true;
+          panLastX.value = event.clientX;
+          panLastY.value = event.clientY;
+          event.preventDefault();
+        };
+
+        const startDragging = (event, item) => {
+          event.stopPropagation();
+          isDragging.value = true;
+          dragItem.value = item;
+          const logical = screenToLogical(event.clientX, event.clientY);
+          dragOffsetX.value = logical.lx - item.x;
+          dragOffsetY.value = logical.ly - item.y;
+          item.dragging = true;
+        };
+
+        const handleMouseMove = (event) => {
+          if (isPanning.value) {
+            const deltaX = event.clientX - panLastX.value;
+            const deltaY = event.clientY - panLastY.value;
+            panX.value += deltaX / zoom.value;
+            panY.value += deltaY / zoom.value;
+            panLastX.value = event.clientX;
+            panLastY.value = event.clientY;
+          } else if (isDragging.value && dragItem.value) {
+            const logical = screenToLogical(event.clientX, event.clientY);
+            dragItem.value.x = logical.lx - dragOffsetX.value;
+            dragItem.value.y = logical.ly - dragOffsetY.value;
+          }
+        };
+
+        const handleMouseUp = (event) => {
+          if (isDragging.value && dragItem.value) {
+            const rect = workspace.value.getBoundingClientRect();
+            if (event.clientX < rect.left || event.clientX > rect.right ||
+                event.clientY < rect.top || event.clientY > rect.bottom) {
+              removeFromWorkspace(dragItem.value.id);
+            }
+            dragItem.value.dragging = false;
+            dragItem.value = null;
+          }
+          isPanning.value = false;
+          isDragging.value = false;
+        };
+
+        const handleWheel = (event) => {
+          const mouse = screenToLogical(event.clientX, event.clientY);
+          const mx = mouse.lx;
+          const my = mouse.ly;
+          const delta = event.deltaY > 0 ? -0.1 : 0.1;
+          const newZoom = Math.min(Math.max(zoom.value + delta, 0.2), 3);
+
+          if (newZoom === zoom.value) return;
+
+          panX.value = (mx + panX.value) * (zoom.value / newZoom) - mx;
+          panY.value = (my + panY.value) * (zoom.value / newZoom) - my;
+          zoom.value = newZoom;
+        };
+
+        // UI methods
+        const toggleSidebar = () => {
+          sidebarCollapsed.value = !sidebarCollapsed.value;
+        };
+
+        const zoomIn = () => {
+          const newZoom = Math.min(zoom.value + 0.2, 5);
+          zoom.value = newZoom;
+        };
+
+        const zoomOut = () => {
+          const newZoom = Math.max(zoom.value - 0.2, 0.1);
+          zoom.value = newZoom;
+        };
+
+        const resetZoom = () => {
+          zoom.value = 0.3;
+          panX.value = 0;
+          panY.value = 0;
+        };
+
+        const toggleFullscreen = async () => {
+          const doc = document;
+          const wsContainer = workspace.value?.parentElement;
+          const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement);
+
+          try {
+            if (!isFull && wsContainer) {
+              if (wsContainer.requestFullscreen) {
+                await wsContainer.requestFullscreen();
+              } else if (wsContainer.webkitRequestFullscreen) {
+                wsContainer.webkitRequestFullscreen();
+              }
+            } else {
+              if (doc.exitFullscreen) {
+                await doc.exitFullscreen();
+              } else if (doc.webkitExitFullscreen) {
+                doc.webkitExitFullscreen();
+              }
+            }
+          } catch (err) {
+            console.warn('Fullscreen toggle failed', err);
+          }
+        };
+
+        const openImageModal = (img) => {
+          selectedImage.value = img;
+          showImageModal.value = true;
+        };
+
+        const applyFilters = () => {
+          // Reactive computed properties handle filtering automatically
+        };
+
+        const clearAllFilters = () => {
+          colorFilter.value = '#ff0000';
+          searchHex.value = '';
+          searchTitle.value = '';
+          searchMetadata.value = '';
+          tolerance.value = 60;
+          selectedDecades.value = [];
+        };
+
+        const selectAllDecades = () => {
+          selectedDecades.value = availableDecades.value.map(d => d.value);
+        };
+
+        const deselectAllDecades = () => {
+          selectedDecades.value = [];
+        };
+
+        const downloadCSV = () => {
+          if (workspaceItems.value.length === 0) return;
+
+          const rows = [['id', 'name', 'url']];
+          workspaceItems.value.forEach(item => {
+            rows.push([item.id || '', item.name || '', item.url || '']);
+          });
+
+          const csv = rows.map(row =>
+            row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')
+          ).join('\n');
+
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'workspace_items.csv';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        };
+
+        // Lifecycle
+        onMounted(() => {
+          updateTheme();
+          loadCSV();
+
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+
+          document.addEventListener('fullscreenchange', () => {
+            isFullscreen.value = !!(document.fullscreenElement || document.webkitFullscreenElement);
+          });
+        });
+
+        return {
+          // Data
+          images,
+          loading,
+          error,
+          workspaceItems,
+          filteredImages,
+          availableDecades,
+
+          // Theme
+          isDarkMode,
+          toggleTheme,
+
+          // UI State
+          sidebarCollapsed,
+          isFullscreen,
+          showWorkspaceList,
+          showInstructions,
+          showImageModal,
+          selectedImage,
+
+          // Workspace
+          zoom,
+          workspaceTransform,
+          workspace,
+          workspaceInner,
+
+          // Filters
+          colorFilter,
+          searchHex,
+          tolerance,
+          searchTitle,
+          searchMetadata,
+          selectedDecades,
+
+          // Methods
+          toggleSidebar,
+          zoomIn,
+          zoomOut,
+          resetZoom,
+          toggleFullscreen,
+          openImageModal,
+          addToWorkspace,
+          handleDragStart,
+          handleDrop,
+          startPanning,
+          startDragging,
+          handleWheel,
+          applyFilters,
+          clearAllFilters,
+          selectAllDecades,
+          deselectAllDecades,
+          downloadCSV
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
