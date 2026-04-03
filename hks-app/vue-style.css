@@ -433,7 +433,7 @@ button.clear:hover {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
 }

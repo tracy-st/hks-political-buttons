@@ -198,10 +198,10 @@
             </button>
             <button @click="showInstructions = true">Instructions</button>
           </div>
-
-          <div class="workspace-controls">
-            <button @click="saveWorkspace" :disabled="workspaceItems.length === 0">Save Workspace</button>
-            <button @click="loadWorkspace" :disabled="!hasSavedWorkspace">Load Workspace</button>
+            <div class="workspace-controls">
+            Workspace:
+            <button @click="saveWorkspace" :disabled="workspaceItems.length === 0">Save</button>
+            <button @click="loadWorkspace" :disabled="!hasSavedWorkspace">Restore</button>
             <button @click="downloadWorkspace" :disabled="workspaceItems.length === 0">Download</button>
             <input
               ref="fileInput"
@@ -210,7 +210,7 @@
               @change="uploadWorkspace"
               style="display: none;"
             >
-            <button @click="$refs.fileInput.click()">Upload</button>
+            <button @click="$refs.fileInput.click()">Import</button>
             <button @click="clearWorkspace" :disabled="workspaceItems.length === 0" class="clear">Clear All</button>
           </div>
         </div>
