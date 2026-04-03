@@ -6,11 +6,29 @@
   <title>Political Buttons Image Workspace - Vue.js</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="vue-style.css">
+  <script>
+    // Set theme immediately to prevent flash
+    (function() {
+      const isDark = localStorage.getItem('darkMode') === 'true';
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    })();
+  </script>
+  <style>
+    /* Prevent flash of modal content */
+    .modal {
+      display: none !important;
+    }
+
+    /* Hide Vue content until loaded */
+    [v-cloak] {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
-  <div id="app">
+  <div id="app" v-cloak>
     <button
       class="theme-toggle"
       @click="toggleTheme"
@@ -358,7 +376,7 @@
         const selectedImage = ref(null);
 
         // Filters
-        const colorFilter = ref('#ff0000');
+        const colorFilter = ref('');
         const searchHex = ref('');
         const tolerance = ref(60);
         const searchTitle = ref('');
@@ -830,7 +848,6 @@
 
         // Lifecycle
         onMounted(() => {
-          updateTheme();
           loadCSV();
 
           document.addEventListener('mousemove', handleMouseMove);
