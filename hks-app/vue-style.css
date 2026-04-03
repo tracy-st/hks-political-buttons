@@ -18,8 +18,8 @@
   --border-strong: #111110;
 
   /* Workspace specific */
-  --workspace-bg: #6B6860;
-  --workspace-label: #A9A59E;
+  --workspace-bg: #A9A59E;
+  --workspace-label: #242320;
   --modal-overlay: rgba(17, 17, 16, 0.8);
 }
 
@@ -43,8 +43,8 @@
   --border-strong: #F0EDE5;
 
   /* Workspace specific */
-  --workspace-bg: #1B1A17;
-  --workspace-label: #57544E;
+  --workspace-bg: #A9A59E;
+  --workspace-label: #242320;
   --modal-overlay: rgba(17, 17, 16, 0.9);
 }
 
@@ -60,8 +60,8 @@
     --accent-muted: #271A12;
     --border: #2A2924;
     --border-strong: #F0EDE5;
-    --workspace-bg: #1B1A17;
-    --workspace-label: #57544E;
+    --workspace-bg: #A9A59E;
+    --workspace-label: #242320;
     --modal-overlay: rgba(17, 17, 16, 0.9);
   }
 }
@@ -447,8 +447,8 @@ button.clear:hover {
 }
 
 .workspace span, #workspaceLabel {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
+    font-family: 'Syne', sans-serif;
+  font-weight: 900;
   font-style: normal;
   font-size: min(120vw, 1400px);
   color: var(--workspace-label);
@@ -456,15 +456,17 @@ button.clear:hover {
   line-height: 0.95;
   letter-spacing: -0.02em;
   text-transform: uppercase;
-  opacity: 0.1;
 }
+
+#workspaceLabel {
+     font-family: "Public Sans", serif;
+}
+
 
 .workspace-card {
   text-align: center;
   cursor: grab;
   position: relative;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
 }
 
 .workspace-card:hover {
