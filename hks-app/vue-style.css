@@ -135,18 +135,34 @@ h3 {
 .container {
   max-width: 1200px;
   margin: 0 auto;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .content-with-sidebars {
   display: flex;
   flex-wrap: nowrap;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 24px;
+  height: 100%;
 }
 
 .content-with-sidebars > * {
   max-width: 50%;
   padding: 16px;
+  overflow-y: auto;
+}
+
+/* Workspace container - fixed, no scroll */
+#workspaceContainer {
+  overflow-y: visible !important;
+}
+
+/* Grid container - scrollable left sidebar */
+#gridContainer {
+  max-height: 100vh;
+  overflow-y: auto;
+  padding-right: 8px; /* Space for scrollbar */
 }
 
 @media (min-width: 768px) {
@@ -178,6 +194,9 @@ h3 {
 /* Sidebar */
 #sidebar {
   max-width: 15%;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding-right: 8px; /* Space for scrollbar */
 }
 
 .sticky {
@@ -187,9 +206,18 @@ h3 {
   padding: 16px;
   z-index: 1000;
   border: 1px solid var(--border);
+  max-height: calc(100vh - 40px); /* Account for top offset */
+  overflow-y: auto;
 }
 
-#workspaceContainer.sticky,
+#workspaceContainer.sticky {
+  align-self: flex-start;
+  position: sticky;
+  top: 20px;
+  overflow-y: visible;
+  max-height: none;
+}
+
 #sidebar.sticky {
   align-self: flex-start;
 }
