@@ -357,6 +357,17 @@ button.clear:hover {
 }
 
 .current-zoom {
+  padding: 6px 12px;
+  font-size: 0.65rem;
+  font-family: 'DM Mono', monospace;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.current-zoom {
     font-size: 0.85rem;
 }
 
@@ -412,6 +423,37 @@ button.clear:hover {
   margin-top: 16px;
   justify-content: space-between;
   align-items: flex-end;
+}
+
+/* Workspace controls */
+.workspace-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.workspace-controls button {
+  font-size: 0.65rem;
+  padding: 6px 10px;
+  margin: 0;
+}
+
+.workspace-controls button:disabled {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+.workspace-controls button:disabled:hover {
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
 }
 
 /* Image grid */

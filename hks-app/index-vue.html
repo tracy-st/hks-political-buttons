@@ -198,6 +198,21 @@
             </button>
             <button @click="showInstructions = true">Instructions</button>
           </div>
+
+          <div class="workspace-controls">
+            <button @click="saveWorkspace" :disabled="workspaceItems.length === 0">Save Workspace</button>
+            <button @click="loadWorkspace" :disabled="!hasSavedWorkspace">Load Workspace</button>
+            <button @click="downloadWorkspace" :disabled="workspaceItems.length === 0">Download</button>
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".json"
+              @change="uploadWorkspace"
+              style="display: none;"
+            >
+            <button @click="$refs.fileInput.click()">Upload</button>
+            <button @click="clearWorkspace" :disabled="workspaceItems.length === 0" class="clear">Clear All</button>
+          </div>
         </div>
 
         <!-- Image Grid -->
@@ -373,6 +388,9 @@
         const zoom = ref(0.25);
         const panX = ref(0);
         const panY = ref(0);
+
+        // Workspace persistence
+        const hasSavedWorkspace = ref(localStorage.getItem('savedWorkspace') !== null);
 
         // UI State
         const sidebarCollapsed = ref(false);
@@ -692,6 +710,90 @@
           }
         };
 
+        // Workspace persistence functions
+        const saveWorkspace = () => {
+          const workspaceData = {
+            items: workspaceItems.value,
+            zoom: zoom.value,
+            panX: panX.value,
+            panY: panY.value,
+            timestamp: new Date().toISOString()
+          };
+          localStorage.setItem('savedWorkspace', JSON.stringify(workspaceData));
+          hasSavedWorkspace.value = true;
+          console.log('Workspace saved to localStorage');
+        };
+
+        const loadWorkspace = () => {
+          const saved = localStorage.getItem('savedWorkspace');
+          if (saved) {
+            try {
+              const workspaceData = JSON.parse(saved);
+              workspaceItems.value = workspaceData.items || [];
+              zoom.value = workspaceData.zoom || 0.25;
+              panX.value = workspaceData.panX || 0;
+              panY.value = workspaceData.panY || 0;
+              console.log('Workspace loaded from localStorage');
+            } catch (error) {
+              console.error('Error loading workspace:', error);
+              alert('Error loading saved workspace');
+            }
+          }
+        };
+
+        const downloadWorkspace = () => {
+          const workspaceData = {
+            items: workspaceItems.value,
+            zoom: zoom.value,
+            panX: panX.value,
+            panY: panY.value,
+            timestamp: new Date().toISOString(),
+            version: '1.0'
+          };
+
+          const blob = new Blob([JSON.stringify(workspaceData, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `hks-workspace-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        };
+
+        const uploadWorkspace = (event) => {
+          const file = event.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const workspaceData = JSON.parse(e.target.result);
+                workspaceItems.value = workspaceData.items || [];
+                zoom.value = workspaceData.zoom || 0.25;
+                panX.value = workspaceData.panX || 0;
+                panY.value = workspaceData.panY || 0;
+                console.log('Workspace loaded from file');
+              } catch (error) {
+                console.error('Error parsing workspace file:', error);
+                alert('Invalid workspace file format');
+              }
+            };
+            reader.readAsText(file);
+          }
+          // Clear the file input
+          event.target.value = '';
+        };
+
+        const clearWorkspace = () => {
+          if (confirm('Are you sure you want to clear all items from the workspace?')) {
+            workspaceItems.value = [];
+            zoom.value = 0.25;
+            panX.value = 0;
+            panY.value = 0;
+          }
+        };
+
         // Event handlers
         const handleDragStart = (event, img) => {
           event.dataTransfer.setData('id', img.id);
@@ -885,6 +987,7 @@
           availableDecades,
           colorFilterObj,
           hasActiveFilters,
+          hasSavedWorkspace,
 
           // Theme
           isDarkMode,
@@ -924,6 +1027,11 @@
           toggleFullscreen,
           openImageModal,
           addToWorkspace,
+          saveWorkspace,
+          loadWorkspace,
+          downloadWorkspace,
+          uploadWorkspace,
+          clearWorkspace,
           handleDragStart,
           handleDrop,
           startPanning,
