@@ -16,7 +16,12 @@
      <div id="workspaceContainer" class="sticky">
       <div class="right-controls">
           <button id="toggleTopBar">Collapse sidebar</button>
-               <h2>Workspace</h2>
+               
+  <button id="zoomIn" class="ctrl-btn">Zoom In (+)</button>
+  <div id="zoomLevelIndicator" class="ctrl-btn">100%</div>
+  <button id="zoomOut" class="ctrl-btn">Zoom Out (-)</button>
+  <button id="resetZoom" class="ctrl-btn">Reset View</button>
+                       <h2>Workspace</h2>
       </div>
 
       <div class="workspace" id="workspace"> 
@@ -124,7 +129,7 @@
     let workspaceItems = [];
 
     // logical pan/zoom state
-    let zoom = 1;
+    let zoom = 0.3;
     let panX = 0; // logical units
     let panY = 0;
     function clamp(v,a,b){ return Math.min(Math.max(v,a),b); }
@@ -134,7 +139,13 @@
       if(!wsInner) return;
       // translate takes pixels; panX/panY are logical units so convert by *zoom
       wsInner.style.transform = `translate(${panX * zoom}px, ${panY * zoom}px) scale(${zoom})`;
-    }
+      // NEW: Update the zoom indicator text
+  const indicator = document.getElementById('zoomLevelIndicator');
+  if(indicator) {
+    // Math.round converts 0.5 to 50, etc.
+    indicator.textContent = Math.round(zoom * 100) + '%';
+  }
+}
 
     function screenToLogical(clientX, clientY){
       const rect = workspace.getBoundingClientRect();
@@ -181,7 +192,7 @@
     }
 
     async function loadCSV(){
-      const resp = await fetch('../data/hks_buttons_new.csv');
+      const resp = await fetch('data/hks_buttons_new.csv');
       const text = await resp.text();
       const parsed = Papa.parse(text,{ header:true, skipEmptyLines:true });
       const byImage = {};
@@ -522,7 +533,7 @@
     document.addEventListener('mouseup',()=>{ isPanning=false; });
 
     // wheel zoom around cursor
-    workspace.addEventListener('wheel',(e)=>{ e.preventDefault(); const mouse = screenToLogical(e.clientX, e.clientY); const mx = mouse.lx, my = mouse.ly; const delta = e.deltaY>0 ? -0.1 : 0.1; const newZoom = clamp(zoom + delta, 0.5, 3); if(newZoom===zoom) return; panX = (mx + panX) * (zoom / newZoom) - mx; panY = (my + panY) * (zoom / newZoom) - my; zoom = newZoom; applyTransform(); });
+    workspace.addEventListener('wheel',(e)=>{ e.preventDefault(); const mouse = screenToLogical(e.clientX, e.clientY); const mx = mouse.lx, my = mouse.ly; const delta = e.deltaY>0 ? -0.1 : 0.1; const newZoom = clamp(zoom + delta, 0.2, 3); if(newZoom===zoom) return; panX = (mx + panX) * (zoom / newZoom) - mx; panY = (my + panY) * (zoom / newZoom) - my; zoom = newZoom; applyTransform(); });
 
     // --- workspace list modal and CSV export ---
     function renderWorkspaceTable(){
@@ -597,6 +608,43 @@
         toggleTopBarBtn.textContent = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
       });
     }
+
+  // --- add zoom buttons ---
+
+  const btnZoomIn = document.getElementById('zoomIn');
+const btnZoomOut = document.getElementById('zoomOut');
+const btnResetZoom = document.getElementById('resetZoom');
+
+if (btnZoomIn) {
+  btnZoomIn.addEventListener('click', () => {
+    // Increment zoom by 0.2, clamped between 0.1 and 5
+    const newZoom = clamp(zoom + 0.2, 0.1, 5); 
+    if (newZoom !== zoom) {
+      zoom = newZoom;
+      applyTransform();
+    }
+  });
+}
+
+if (btnZoomOut) {
+  btnZoomOut.addEventListener('click', () => {
+    // Decrement zoom by 0.2
+    const newZoom = clamp(zoom - 0.2, 0.1, 5);
+    if (newZoom !== zoom) {
+      zoom = newZoom;
+      applyTransform();
+    }
+  });
+}
+
+if (btnResetZoom) {
+  btnResetZoom.addEventListener('click', () => {
+    zoom = 0.3; // Starts the workspace at 50%
+    panX = 0; 
+    panY = 0;
+    applyTransform(); // This will now also update the text to "50%"
+  });
+}
 
     loadCSV();
     applyTransform();
