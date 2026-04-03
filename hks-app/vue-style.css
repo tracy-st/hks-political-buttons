@@ -401,3 +401,11 @@ th {
   padding: 10px;
   text-align: center;
 }
+
+.start-message {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+  font-size: 18px;
+  font-style: italic;
+}

@@ -180,7 +180,9 @@
 
         <!-- Image Grid -->
         <div id="gridContainer">
-          <div class="result-count">{{ filteredImages.length }} / {{ images.length }} results</div>
+          <div v-if="!loading && !error && hasActiveFilters" class="result-count">
+            {{ filteredImages.length }} / {{ images.length }} results
+          </div>
 
           <div v-if="loading" class="loading">
             Loading images...
@@ -188,6 +190,10 @@
 
           <div v-else-if="error" class="error">
             {{ error }}
+          </div>
+
+          <div v-else-if="!hasActiveFilters" class="start-message">
+            Select a color or filter to start
           </div>
 
           <div v-else class="image-grid">
@@ -423,7 +429,21 @@
           return { clr, searchHex: searchHexNorm, tol };
         });
 
+        // Check if any filters are active
+        const hasActiveFilters = computed(() => {
+          return searchTitle.value ||
+                 searchMetadata.value ||
+                 selectedDecades.value.length > 0 ||
+                 colorPickerUsed.value ||
+                 searchHex.value;
+        });
+
         const filteredImages = computed(() => {
+          // Don't show any images if no filters are active
+          if (!hasActiveFilters.value) {
+            return [];
+          }
+
           const cf = colorFilterObj.value;
 
           let filtered = images.value.filter(img => {
@@ -830,6 +850,7 @@
           filteredImages,
           availableDecades,
           colorFilterObj,
+          hasActiveFilters,
 
           // Theme
           isDarkMode,
