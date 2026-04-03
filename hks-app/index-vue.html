@@ -203,6 +203,7 @@
             <button @click="saveWorkspace" :disabled="workspaceItems.length === 0">Save</button>
             <button @click="loadWorkspace" :disabled="!hasSavedWorkspace">Restore</button>
             <button @click="downloadWorkspace" :disabled="workspaceItems.length === 0">Download</button>
+            <button @click="downloadWorkspacePNG" :disabled="workspaceItems.length === 0">Download PNG</button>
             <input
               ref="fileInput"
               type="file"
@@ -366,6 +367,7 @@
 
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <script>
     const { createApp, ref, computed, onMounted, nextTick } = Vue;
@@ -794,6 +796,106 @@
           }
         };
 
+        const downloadWorkspacePNG = async () => {
+          if (!workspace.value || workspaceItems.value.length === 0) return;
+
+          try {
+            // Show capturing indicator
+            workspace.value.classList.add('capturing');
+
+            // Temporarily hide UI elements that shouldn't appear in the export
+            const rightControls = workspace.value.parentElement.querySelector('.right-controls');
+            const viewBar = workspace.value.parentElement.querySelector('.view-bar');
+            const workspaceControls = workspace.value.parentElement.querySelector('.workspace-controls');
+
+            if (rightControls) rightControls.style.display = 'none';
+            if (viewBar) viewBar.style.display = 'none';
+            if (workspaceControls) workspaceControls.style.display = 'none';
+
+            // Fix text rendering for PNG export
+            const workspaceLabel = workspace.value.querySelector('#workspaceLabel');
+            let originalStyles = {};
+
+            if (workspaceLabel) {
+              // Store original styles
+              originalStyles = {
+                fontSize: workspaceLabel.style.fontSize,
+                letterSpacing: workspaceLabel.style.letterSpacing,
+                fontFamily: workspaceLabel.style.fontFamily
+              };
+
+              // Apply fixed styles for capture
+              workspaceLabel.style.fontSize = '1200px';
+              workspaceLabel.style.letterSpacing = '-0.02em';
+              workspaceLabel.style.fontFamily = '"Public Sans", sans-serif';
+            }
+
+            // Wait a moment for the DOM to update and show the indicator
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Remove the indicator before capture
+            workspace.value.classList.remove('capturing');
+
+            // Capture the workspace
+            const canvas = await html2canvas(workspace.value, {
+              backgroundColor: null, // Preserve workspace background
+              scale: 2, // Higher resolution
+              useCORS: true,
+              allowTaint: true,
+              imageTimeout: 15000,
+              removeContainer: false,
+              onclone: (clonedDoc) => {
+                // Further fix text in the cloned document
+                const clonedLabel = clonedDoc.querySelector('#workspaceLabel');
+                if (clonedLabel) {
+                  clonedLabel.style.fontSize = '1200px';
+                  clonedLabel.style.letterSpacing = '-0.02em';
+                  clonedLabel.style.fontFamily = '"Public Sans", sans-serif';
+                  clonedLabel.style.whiteSpace = 'nowrap';
+                }
+              }
+            });
+
+            // Restore original text styles
+            if (workspaceLabel) {
+              workspaceLabel.style.fontSize = originalStyles.fontSize;
+              workspaceLabel.style.letterSpacing = originalStyles.letterSpacing;
+              workspaceLabel.style.fontFamily = originalStyles.fontFamily;
+            }
+
+            // Restore UI elements
+            if (rightControls) rightControls.style.display = '';
+            if (viewBar) viewBar.style.display = '';
+            if (workspaceControls) workspaceControls.style.display = '';
+
+            // Convert to blob and download
+            canvas.toBlob((blob) => {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `hks-workspace-${new Date().toISOString().split('T')[0]}.png`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            }, 'image/png', 1.0);
+
+          } catch (error) {
+            console.error('Error capturing workspace:', error);
+            alert('Error generating PNG. Please try again.');
+
+            // Make sure UI elements are restored and indicator is removed even on error
+            workspace.value.classList.remove('capturing');
+            const rightControls = workspace.value.parentElement.querySelector('.right-controls');
+            const viewBar = workspace.value.parentElement.querySelector('.view-bar');
+            const workspaceControls = workspace.value.parentElement.querySelector('.workspace-controls');
+
+            if (rightControls) rightControls.style.display = '';
+            if (viewBar) viewBar.style.display = '';
+            if (workspaceControls) workspaceControls.style.display = '';
+          }
+        };
+
         // Event handlers
         const handleDragStart = (event, img) => {
           event.dataTransfer.setData('id', img.id);
@@ -965,6 +1067,28 @@
           URL.revokeObjectURL(url);
         };
 
+        // Workspace label sizing
+        const resizeWorkspaceLabel = () => {
+          const label = workspace.value?.querySelector('#workspaceLabel');
+          if (!label || !workspace.value) return;
+
+          const workspaceWidth = workspace.value.offsetWidth;
+          const workspaceHeight = workspace.value.offsetHeight;
+
+          // Start with a base font size and adjust
+          let fontSize = Math.min(workspaceWidth * 0.8, workspaceHeight * 1.2);
+
+          // Apply the font size temporarily to measure
+          label.style.fontSize = fontSize + 'px';
+
+          // Check if text fits width, adjust if needed
+          const textWidth = label.offsetWidth;
+          if (textWidth > workspaceWidth * 0.95) {
+            fontSize = (fontSize * workspaceWidth * 0.95) / textWidth;
+            label.style.fontSize = fontSize + 'px';
+          }
+        };
+
         // Lifecycle
         onMounted(() => {
           loadCSV();
@@ -975,6 +1099,13 @@
           document.addEventListener('fullscreenchange', () => {
             isFullscreen.value = !!(document.fullscreenElement || document.webkitFullscreenElement);
           });
+
+          // Resize workspace label when mounted and on window resize
+          nextTick(() => {
+            resizeWorkspaceLabel();
+          });
+
+          window.addEventListener('resize', resizeWorkspaceLabel);
         });
 
         return {
@@ -1030,6 +1161,7 @@
           saveWorkspace,
           loadWorkspace,
           downloadWorkspace,
+          downloadWorkspacePNG,
           uploadWorkspace,
           clearWorkspace,
           handleDragStart,

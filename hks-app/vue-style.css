@@ -222,12 +222,11 @@ h3 {
   max-height: 100vh;
   overflow-y: auto;
   padding-right: 8px; /* Space for scrollbar */
-    top: 20px;
+ margin-top:20px;
 }
 
 .sticky {
   position: sticky;
-  top: 20px;
   background: var(--bg-elevated);
   padding: 16px 8px 8px 8px;
   z-index: 1000;
@@ -456,6 +455,28 @@ button.clear:hover {
   color: var(--text-tertiary);
 }
 
+/* Loading state for PNG export */
+.workspace.capturing {
+  position: relative;
+}
+
+.workspace.capturing::after {
+  content: 'Capturing...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+  color: #FAFAF7;
+  padding: 8px 16px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  z-index: 10000;
+  pointer-events: none;
+}
+
 /* Image grid */
 .image-grid {
   display: grid;
@@ -532,7 +553,7 @@ button.clear:hover {
   color: var(--workspace-label);
   position: absolute;
   line-height: 0.95;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.05em;
   text-transform: uppercase;
 }
 
