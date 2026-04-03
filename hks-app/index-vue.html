@@ -142,10 +142,11 @@
             >
               {{ sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar' }}
             </button>
-
-            <button @click="zoomIn" class="ctrl-btn">Zoom In (+)</button>
-            <div class="current-zoom">{{ Math.round(zoom * 100) }}%</div>
             <button @click="zoomOut" class="ctrl-btn">Zoom Out (-)</button>
+            
+            <div class="current-zoom">{{ Math.round(zoom * 100) }}%</div>
+           
+            <button @click="zoomIn" class="ctrl-btn">Zoom In (+)</button> 
             <button @click="resetZoom" class="ctrl-btn">Reset View</button>
      
           </div>
@@ -203,7 +204,6 @@
             <button @click="saveWorkspace" :disabled="workspaceItems.length === 0">Save</button>
             <button @click="loadWorkspace" :disabled="!hasSavedWorkspace">Restore</button>
             <button @click="downloadWorkspace" :disabled="workspaceItems.length === 0">Download</button>
-            <button @click="downloadWorkspacePNG" :disabled="workspaceItems.length === 0">Download PNG</button>
             <input
               ref="fileInput"
               type="file"
@@ -212,7 +212,11 @@
               style="display: none;"
             >
             <button @click="$refs.fileInput.click()">Import</button>
+            </div>
+          <div class="workspace-controls">
+             <button @click="downloadWorkspacePNG" :disabled="workspaceItems.length === 0">Download PNG</button>
             <button @click="clearWorkspace" :disabled="workspaceItems.length === 0" class="clear">Clear All</button>
+          
           </div>
         </div>
 
@@ -387,7 +391,7 @@
 
         // Workspace
         const workspaceItems = ref([]);
-        const zoom = ref(0.25);
+        const zoom = ref(0.2);
         const panX = ref(0);
         const panY = ref(0);
 
@@ -988,7 +992,7 @@
         };
 
         const resetZoom = () => {
-          zoom.value = 0.25;
+          zoom.value = 0.20;
           panX.value = 0;
           panY.value = 0;
         };
@@ -1067,28 +1071,6 @@
           URL.revokeObjectURL(url);
         };
 
-        // Workspace label sizing
-        const resizeWorkspaceLabel = () => {
-          const label = workspace.value?.querySelector('#workspaceLabel');
-          if (!label || !workspace.value) return;
-
-          const workspaceWidth = workspace.value.offsetWidth;
-          const workspaceHeight = workspace.value.offsetHeight;
-
-          // Start with a base font size and adjust
-          let fontSize = Math.min(workspaceWidth * 0.8, workspaceHeight * 1.2);
-
-          // Apply the font size temporarily to measure
-          label.style.fontSize = fontSize + 'px';
-
-          // Check if text fits width, adjust if needed
-          const textWidth = label.offsetWidth;
-          if (textWidth > workspaceWidth * 0.95) {
-            fontSize = (fontSize * workspaceWidth * 0.95) / textWidth;
-            label.style.fontSize = fontSize + 'px';
-          }
-        };
-
         // Lifecycle
         onMounted(() => {
           loadCSV();
@@ -1099,13 +1081,6 @@
           document.addEventListener('fullscreenchange', () => {
             isFullscreen.value = !!(document.fullscreenElement || document.webkitFullscreenElement);
           });
-
-          // Resize workspace label when mounted and on window resize
-          nextTick(() => {
-            resizeWorkspaceLabel();
-          });
-
-          window.addEventListener('resize', resizeWorkspaceLabel);
         });
 
         return {
