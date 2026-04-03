@@ -144,7 +144,7 @@
             </button>
 
             <button @click="zoomIn" class="ctrl-btn">Zoom In (+)</button>
-            <div class="ctrl-btn">{{ Math.round(zoom * 100) }}%</div>
+            <div class="current-zoom">{{ Math.round(zoom * 100) }}%</div>
             <button @click="zoomOut" class="ctrl-btn">Zoom Out (-)</button>
             <button @click="resetZoom" class="ctrl-btn">Reset View</button>
      
@@ -193,7 +193,7 @@
 
           <div class="view-bar">
             <button @click="showWorkspaceList = true">View Workspace as List</button>
-            <button @click="toggleFullscreen">
+            <button @click="toggleFullscreen" class="fullscreen">
               {{ isFullscreen ? 'Exit Full Screen' : 'View Workspace Full Screen' }}
             </button>
             <button @click="showInstructions = true">Instructions</button>
@@ -370,7 +370,7 @@
 
         // Workspace
         const workspaceItems = ref([]);
-        const zoom = ref(0.3);
+        const zoom = ref(0.25);
         const panX = ref(0);
         const panY = ref(0);
 
@@ -669,13 +669,18 @@
             return;
           }
 
+          // Add stagger offset based on existing items count
+          const staggerOffset = workspaceItems.value.length * 15; // 15px offset per existing item
+          const staggeredX = x + staggerOffset;
+          const staggeredY = y + staggerOffset;
+
           workspaceItems.value.push({
             id: img.id,
             name: img.name,
             url: img.url,
             width: img.width,
-            x: x,
-            y: y,
+            x: staggeredX,
+            y: staggeredY,
             dragging: false
           });
         };
@@ -779,7 +784,7 @@
         };
 
         const resetZoom = () => {
-          zoom.value = 0.3;
+          zoom.value = 0.25;
           panX.value = 0;
           panY.value = 0;
         };

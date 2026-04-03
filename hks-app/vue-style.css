@@ -160,7 +160,7 @@ h3 {
 
 /* Layout containers */
 .container {
-  max-width: 1200px;
+  max-width: 1500px;
   margin: 0 auto;
   height: 100vh;
   overflow: hidden;
@@ -338,6 +338,13 @@ button.clear {
   margin-top: 16px;
 }
 
+button.fullscreen {
+    background: var(--accent);
+  border-color: var(--accent);
+  color: #FAFAF7;
+  margin-top: 16px;
+}
+
 button.clear:hover {
   background: var(--text-primary);
   border-color: var(--text-primary);
@@ -347,6 +354,10 @@ button.clear:hover {
 .ctrl-btn {
   padding: 6px 12px;
   font-size: 0.65rem;
+}
+
+.current-zoom {
+    font-size: 0.85rem;
 }
 
 .sidebar-toggle {
@@ -468,10 +479,11 @@ button.clear:hover {
   overflow: hidden;
   height: auto;
   user-select: none;
+  padding:0;
 }
 
 .workspace span, #workspaceLabel {
-    font-family: 'Syne', sans-serif;
+  font-family: 'Syne', sans-serif;
   font-weight: 900;
   font-style: normal;
   font-size: min(120vw, 1400px);
@@ -483,7 +495,8 @@ button.clear:hover {
 }
 
 #workspaceLabel {
-     font-family: "Public Sans", serif;
+  font-family: "Public Sans", serif;
+   font-size: min(150vw, 1400px);
 }
 
 
