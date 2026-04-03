@@ -23,6 +23,14 @@
 <body>
   <div id="app" v-cloak>
     <button
+      class="workspace-toggle"
+      @click="toggleWorkspaceBackground"
+      :title="isWorkspaceDark ? 'Switch to Light Workspace' : 'Switch to Dark Workspace'"
+    >
+      {{ isWorkspaceDark ? 'Show HKS' : 'Hide HKS' }}
+    </button>
+
+    <button
       class="theme-toggle"
       @click="toggleTheme"
       :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
@@ -54,7 +62,7 @@
                     @input="onColorPickerChange"
                     @change="onColorPickerChange"
                   >
-                </label><br>
+                </label>
 
                 <input
                   v-model="searchHex"
@@ -62,7 +70,7 @@
                   placeholder="Hex (e.g. #rrggbb)"
                 >
 
-                <label style="display:block; margin-top:6px;">
+                <label style="display:block">
                   Tolerance:
                   <input
                     type="range"
@@ -71,11 +79,11 @@
                     max="255"
                   >
                   <span>{{ tolerance }}</span>
-                </label><br>
+                </label>
               </div>
 
               <div class="options">
-                <h2>Search Titles</h2>
+                <h2>Titles</h2>
                 <input
                   v-model="searchTitle"
                   placeholder="Search titles..."
@@ -84,7 +92,7 @@
               </div>
 
               <div class="options">
-                <h2>Search Metadata</h2>
+                <h2>Metadata</h2>
                 <input
                   v-model="searchMetadata"
                   placeholder="Search person, party, office..."
@@ -94,25 +102,27 @@
             </div>
 
             <div class="options">
-              <h2>Decade (show only):</h2>
-              <div class="decade-filters">
-                <label
-                  v-for="decade in availableDecades"
-                  :key="decade.value"
-                  :data-decade="decade.value"
+              <h2>Show only decades:</h2>
+              <div class="decade-dropdown-container">
+                <select
+                  multiple
+                  v-model="selectedDecades"
+                  class="decade-dropdown"
+                  :size="Math.min(6, availableDecades.length)"
                 >
-                  <input
-                    type="checkbox"
+                  <option
+                    v-for="decade in availableDecades"
+                    :key="decade.value"
                     :value="decade.value"
-                    v-model="selectedDecades"
                   >
-                  {{ decade.value }}s ({{ decade.filteredCount }})
-                </label>
+                    {{ decade.value }}s ({{ decade.filteredCount }})
+                  </option>
+                </select>
               </div>
 
-              <div class="options">
-                <button @click="selectAllDecades">Select All Decades</button>
-                <button @click="deselectAllDecades">Deselect All Decades</button>
+              <div class="options decade-controls">
+                <button @click="selectAllDecades" class="decade-btn">Select All Decades</button>
+                <button @click="deselectAllDecades" class="decade-btn">Clear Decades</button>
               </div>
             </div>
 
@@ -143,6 +153,7 @@
           <div
             class="workspace"
             ref="workspace"
+            :style="{ background: isWorkspaceDark ? 'var(--workspace-label)' : 'var(--workspace-bg)' }"
             @dragover.prevent
             @drop="handleDrop"
             @mousedown="startPanning"
@@ -331,7 +342,7 @@
               </div>
             </div>
 
-            <button @click="showImageModal = false" style="margin-top: 10px;">Close</button>
+            <button @click="showImageModal = false" style="margin-top: 10px;text-align:right">Close</button>
           </div>
         </div>
       </transition>
@@ -348,6 +359,9 @@
       setup() {
         // Theme management
         const isDarkMode = ref(localStorage.getItem('darkMode') === 'true');
+
+        // Workspace background management
+        const isWorkspaceDark = ref(localStorage.getItem('workspaceDark') === 'true');
 
         // Data
         const images = ref([]);
@@ -532,6 +546,11 @@
           isDarkMode.value = !isDarkMode.value;
           localStorage.setItem('darkMode', isDarkMode.value.toString());
           updateTheme();
+        };
+
+        const toggleWorkspaceBackground = () => {
+          isWorkspaceDark.value = !isWorkspaceDark.value;
+          localStorage.setItem('workspaceDark', isWorkspaceDark.value.toString());
         };
 
         const updateTheme = () => {
@@ -865,6 +884,10 @@
           // Theme
           isDarkMode,
           toggleTheme,
+
+          // Workspace background
+          isWorkspaceDark,
+          toggleWorkspaceBackground,
 
           // UI State
           sidebarCollapsed,

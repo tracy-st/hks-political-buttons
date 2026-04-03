@@ -110,14 +110,14 @@ h3 {
   font-size: clamp(1rem, 2vw, 1.5rem);
 }
 
-/* Theme toggle */
+/* Top-right toggles */
 .theme-toggle {
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 10000;
   padding: 10px 22px;
-  background:  var(--bg-primary);
+  background: var(--bg-primary);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
   cursor: pointer;
@@ -129,6 +129,31 @@ h3 {
 }
 
 .theme-toggle:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+.workspace-toggle {
+  position: fixed;
+  top: 20px;
+  right: 80px; /* Position to the left of theme toggle */
+  z-index: 10000;
+  padding: 10px 16px;
+  margin: 4px 4px;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+    background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 150ms ease;
+  vertical-align: center;
+}
+
+.workspace-toggle:hover {
   background: var(--text-primary);
   color: var(--bg-primary);
 }
@@ -281,7 +306,7 @@ input[type="checkbox"] {
 
 /* Buttons */
 button {
-  margin: 4px;
+  margin: 4px 0;
   height: 40px;
   border: 1px solid var(--border-strong);
   background: transparent;
@@ -322,7 +347,6 @@ button.clear:hover {
 .ctrl-btn {
   padding: 6px 12px;
   font-size: 0.65rem;
-  margin: 2px;
 }
 
 .sidebar-toggle {
@@ -340,7 +364,7 @@ button.clear:hover {
 .options h2 {
   color: var(--text-secondary);
   font-family: 'Syne', sans-serif;
-  font-size: clamp(0.8rem, 3vw, 2rem);
+  font-size: clamp(0.8rem, 3vw, 1.3rem);
   font-weight: 600;
   letter-spacing: 0.01em;
   line-height: 1.15;
@@ -421,7 +445,8 @@ button.clear:hover {
 
 .image-card > div:last-child {
   font-family: 'DM Mono', monospace;
-  font-size: 0.68rem;
+  font-size: 0.8rem;
+  line-height: 0.9rem;
   color: var(--text-secondary);
   margin-top: 8px;
   cursor: pointer;
@@ -553,7 +578,7 @@ td {
 
 /* Status and messaging */
 .result-count {
-  padding: 16px 0;
+  padding-top: 50px;
   font-family: 'DM Mono', monospace;
   font-size: 0.68rem;
   color: var(--text-secondary);
@@ -561,23 +586,66 @@ td {
   letter-spacing: 0.12em;
 }
 
-.decade-filters label {
-  display: block;
-  margin: 6px 0;
-  cursor: pointer;
+/* Decade dropdown */
+.decade-dropdown-container {
+  margin: 12px 0;
+}
+
+.decade-dropdown {
+  width: 100%;
+  min-height: 120px;
+  padding: 8px 12px;
+  border: 1px solid var(--input-border);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
   font-family: 'DM Mono', monospace;
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  outline: none;
+  overflow-y: auto;
+}
+
+.decade-dropdown:focus {
+  border-color: var(--border-strong);
+}
+
+.decade-dropdown option {
+  padding: 6px 4px;
   color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: none;
+  cursor: pointer;
+  transition: all 150ms ease;
 }
 
-.decade-filters input[type="checkbox"] {
-  margin-right: 8px;
-}
-
-.decade-filters label:hover {
+.decade-dropdown option:hover {
+  background: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+.decade-dropdown option:checked {
+  background: var(--accent);
+  color: #FAFAF7;
+}
+
+/* Firefox-specific styling */
+.decade-dropdown option:checked {
+  background: var(--accent) !important;
+  color: #FAFAF7 !important;
+}
+
+.decade-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.decade-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 0.65rem;
+  margin: 0;
 }
 
 /* Vue transitions */
