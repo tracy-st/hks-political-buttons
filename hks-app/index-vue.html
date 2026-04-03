@@ -14,11 +14,6 @@
     })();
   </script>
   <style>
-    /* Prevent flash of modal content */
-    .modal {
-      display: none !important;
-    }
-
     /* Hide Vue content until loaded */
     [v-cloak] {
       display: none !important;
@@ -41,7 +36,93 @@
         class="content-with-sidebars"
         :class="{ 'sidebar-collapsed': sidebarCollapsed }"
       >
-        <!-- Workspace Container -->
+        <!-- Sidebar -->
+        <div
+          id="sidebar"
+          class="sticky"
+          :class="{ collapsed: sidebarCollapsed }"
+        >
+          <div class="sidebar">
+            <div class="options">
+              <h2>Filter by Color</h2>
+              <div class="color-filters">
+                <label>
+                  Color:
+                  <input
+                    type="color"
+                    v-model="colorFilter"
+                    @input="onColorPickerChange"
+                    @change="onColorPickerChange"
+                  >
+                </label><br>
+
+                <input
+                  v-model="searchHex"
+                  class="search-bar"
+                  placeholder="Hex (e.g. #rrggbb)"
+                >
+
+                <label style="display:block; margin-top:6px;">
+                  Tolerance:
+                  <input
+                    type="range"
+                    v-model="tolerance"
+                    min="0"
+                    max="255"
+                  >
+                  <span>{{ tolerance }}</span>
+                </label><br>
+              </div>
+
+              <div class="options">
+                <h2>Search Titles</h2>
+                <input
+                  v-model="searchTitle"
+                  placeholder="Search titles..."
+                  class="search-bar"
+                >
+              </div>
+
+              <div class="options">
+                <h2>Search Metadata</h2>
+                <input
+                  v-model="searchMetadata"
+                  placeholder="Search person, party, office..."
+                  class="search-bar"
+                >
+              </div>
+            </div>
+
+            <div class="options">
+              <h2>Decade (show only):</h2>
+              <div class="decade-filters">
+                <label
+                  v-for="decade in availableDecades"
+                  :key="decade.value"
+                  :data-decade="decade.value"
+                >
+                  <input
+                    type="checkbox"
+                    :value="decade.value"
+                    v-model="selectedDecades"
+                  >
+                  {{ decade.value }}s ({{ decade.filteredCount }})
+                </label>
+              </div>
+
+              <div class="options">
+                <button @click="selectAllDecades">Select All Decades</button>
+                <button @click="deselectAllDecades">Deselect All Decades</button>
+              </div>
+            </div>
+
+            <div class="options">
+              <button @click="clearAllFilters" class="clear">Clear all Filters</button>
+            </div>
+          </div>
+        </div>
+
+                <!-- Workspace Container -->
         <div id="workspaceContainer" class="sticky">
           <div class="right-controls">
             <button
@@ -105,92 +186,6 @@
               {{ isFullscreen ? 'Exit Full Screen' : 'View Workspace Full Screen' }}
             </button>
             <button @click="showInstructions = true">Instructions</button>
-          </div>
-        </div>
-
-        <!-- Sidebar -->
-        <div
-          id="sidebar"
-          class="sticky"
-          :class="{ collapsed: sidebarCollapsed }"
-        >
-          <div class="sidebar">
-            <div class="options">
-              <h2>Filter by Color</h2>
-              <div class="color-filters">
-                <label>
-                  Color:
-                  <input
-                    type="color"
-                    v-model="colorFilter"
-                    @input="onColorPickerChange"
-                    @change="onColorPickerChange"
-                  >
-                </label><br>
-
-                <input
-                  v-model="searchHex"
-                  class="search-bar"
-                  placeholder="Search Hex (e.g. #rrggbb)"
-                >
-
-                <label style="display:block; margin-top:6px;">
-                  Tolerance:
-                  <input
-                    type="range"
-                    v-model="tolerance"
-                    min="0"
-                    max="255"
-                  >
-                  <span>{{ tolerance }}</span>
-                </label><br>
-              </div>
-
-              <div class="options">
-                <h2>Search Titles</h2>
-                <input
-                  v-model="searchTitle"
-                  placeholder="Search titles..."
-                  class="search-bar"
-                >
-              </div>
-
-              <div class="options">
-                <h2>Search Metadata</h2>
-                <input
-                  v-model="searchMetadata"
-                  placeholder="Search person, party, office..."
-                  class="search-bar"
-                >
-              </div>
-            </div>
-
-            <div class="options">
-              <h2>Decade (show only):</h2>
-              <div class="decade-filters">
-                <label
-                  v-for="decade in availableDecades"
-                  :key="decade.value"
-                  :data-decade="decade.value"
-                >
-                  <input
-                    type="checkbox"
-                    :value="decade.value"
-                    v-model="selectedDecades"
-                  >
-                  {{ decade.value }}s ({{ decade.filteredCount }})
-                </label>
-              </div>
-
-              <div class="options">
-                <button @click="selectAllDecades">Select All Decades</button>
-                <button @click="deselectAllDecades">Deselect All Decades</button>
-              </div>
-            </div>
-
-            <div class="options">
-              <button @click="clearAllFilters" class="clear">Clear all Filters</button>
-            </div>
           </div>
         </div>
 

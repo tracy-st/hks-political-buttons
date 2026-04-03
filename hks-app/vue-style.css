@@ -15,6 +15,7 @@
 
   /* Borders */
   --border: #D6D2C8;
+  --input-border: #D6D2C8;
   --border-strong: #111110;
 
   /* Workspace specific */
@@ -40,6 +41,7 @@
 
   /* Borders */
   --border: #2A2924;
+  --input-border: #D6D2C8;
   --border-strong: #F0EDE5;
 
   /* Workspace specific */
@@ -115,7 +117,7 @@ h3 {
   right: 20px;
   z-index: 10000;
   padding: 10px 22px;
-  background: transparent;
+  background:  var(--bg-primary);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
   cursor: pointer;
@@ -176,14 +178,12 @@ h3 {
 
 @media (min-width: 1024px) {
   .content-with-sidebars > * {
-    width: 25%;
-  }
-  .content-with-sidebars > *:nth-child(1) {
     width: 50%;
   }
-  .content-with-sidebars > *:nth-child(2) {
-    order: -1;
+  .content-with-sidebars > *:nth-child(1) {
+    width: 25%;
   }
+
   .sidebar {
     display: flex;
     flex-direction: column;
@@ -193,17 +193,18 @@ h3 {
 
 /* Sidebar */
 #sidebar {
-  max-width: 15%;
+  max-width: 25%;
   max-height: 100vh;
   overflow-y: auto;
   padding-right: 8px; /* Space for scrollbar */
+    top: 20px;
 }
 
 .sticky {
   position: sticky;
   top: 20px;
   background: var(--bg-elevated);
-  padding: 16px;
+  padding: 16px 8px 8px 8px;
   z-index: 1000;
   border: 1px solid var(--border);
   max-height: calc(100vh - 40px); /* Account for top offset */
@@ -242,12 +243,11 @@ h3 {
 }
 
 .search-bar {
-  width: 80%;
   padding: 12px 16px;
   margin-bottom: 16px;
   display: inline-block;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
+  border: 1px solid var(--input-border);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   font-family: 'DM Sans', sans-serif;
   font-weight: 300;
@@ -260,7 +260,7 @@ h3 {
 }
 
 .search-bar::placeholder {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 input[type="range"] {
@@ -281,8 +281,8 @@ input[type="checkbox"] {
 
 /* Buttons */
 button {
-  padding: 10px 22px;
   margin: 4px;
+  height: 40px;
   border: 1px solid var(--border-strong);
   background: transparent;
   color: var(--text-primary);
@@ -292,6 +292,7 @@ button {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   transition: all 150ms ease;
+  vertical-align: center;
 }
 
 button:hover {
@@ -334,17 +335,15 @@ button.clear:hover {
   display: flex;
   justify-content: flex-start;
   flex-direction: column;
-  margin-bottom: 24px;
 }
 
 .options h2 {
-  font-size: 0.75rem;
-  font-family: 'DM Mono', monospace;
-  font-weight: 400;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--text-secondary);
-  margin-bottom: 12px;
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(0.8rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
 }
 
 .filters {
@@ -414,7 +413,7 @@ button.clear:hover {
 }
 
 .swatches {
-  margin: 8px 0;
+  margin: 4px 0;
   display: flex;
   justify-content: center;
   gap: 4px;
@@ -512,14 +511,6 @@ button.clear:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 150ms ease, visibility 150ms ease;
-}
-
-.modal[style*="display: block"] {
-  opacity: 1;
-  visibility: visible;
 }
 
 .modal-content {
