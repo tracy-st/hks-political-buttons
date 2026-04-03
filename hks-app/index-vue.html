@@ -511,13 +511,13 @@
                   <input
                     type="color"
                     v-model="colorFilter"
-                    @input="applyFilters"
+                    @input="onColorPickerChange"
+                    @change="onColorPickerChange"
                   >
                 </label><br>
 
                 <input
                   v-model="searchHex"
-                  @input="applyFilters"
                   class="search-bar"
                   placeholder="Search Hex (e.g. #rrggbb)"
                 >
@@ -527,7 +527,6 @@
                   <input
                     type="range"
                     v-model="tolerance"
-                    @input="applyFilters"
                     min="0"
                     max="255"
                   >
@@ -539,7 +538,6 @@
                 <h2>Search Titles</h2>
                 <input
                   v-model="searchTitle"
-                  @input="applyFilters"
                   placeholder="Search titles..."
                   class="search-bar"
                 >
@@ -549,7 +547,6 @@
                 <h2>Search Metadata</h2>
                 <input
                   v-model="searchMetadata"
-                  @input="applyFilters"
                   placeholder="Search person, party, office..."
                   class="search-bar"
                 >
@@ -568,7 +565,6 @@
                     type="checkbox"
                     :value="decade.value"
                     v-model="selectedDecades"
-                    @change="applyFilters"
                   >
                   {{ decade.value }}s ({{ decade.filteredCount }})
                 </label>
@@ -761,12 +757,12 @@
 
         // Filters
         const colorFilter = ref('#ff0000');
-        const colorFilterActive = ref(false); // Track if user has used color picker
         const searchHex = ref('');
         const tolerance = ref(60);
         const searchTitle = ref('');
         const searchMetadata = ref('');
         const selectedDecades = ref([]);
+        const colorPickerUsed = ref(false);
 
         // Dragging state
         const isPanning = ref(false);
@@ -823,10 +819,20 @@
             }));
         });
 
+        // Create a reactive color filter object like the original
+        const colorFilterObj = computed(() => {
+          const clr = colorPickerUsed.value ? normalizeHex(colorFilter.value) : '';
+          const searchHexNorm = normalizeHex(searchHex.value);
+          const tol = parseInt(tolerance.value);
+          return { clr, searchHex: searchHexNorm, tol };
+        });
+
         const filteredImages = computed(() => {
+          const cf = colorFilterObj.value;
+
           let filtered = images.value.filter(img => {
             // Title search
-            if (searchTitle.value && !img.name.toLowerCase().includes(searchTitle.value.toLowerCase())) {
+            if (searchTitle.value && !(img.name || '').toLowerCase().includes(searchTitle.value.toLowerCase())) {
               return false;
             }
 
@@ -855,27 +861,35 @@
               }
             }
 
-            // Color filter
-            if (!colorFilter.value && !searchHex.value) {
-              return true;
+            // Color filter - exact same logic as original
+            if (!cf.clr && !cf.searchHex) return true;
+
+            if (cf.searchHex) {
+              let best = 0;
+              img.colors.forEach(c => {
+                if (colorDistance(hexToRgb(c.hex), hexToRgb(cf.searchHex)) <= cf.tol) {
+                  best = Math.max(best, c.proportion);
+                }
+              });
+              return best > 0;
             }
 
-            const targetColor = searchHex.value || colorFilter.value;
-            if (!targetColor) return true;
+            if (cf.clr) {
+              let best = 0;
+              img.colors.forEach(c => {
+                if (colorDistance(hexToRgb(c.hex), hexToRgb(cf.clr)) <= cf.tol) {
+                  best = Math.max(best, c.proportion);
+                }
+              });
+              return best > 0;
+            }
 
-            let bestMatch = 0;
-            img.colors.forEach(color => {
-              if (colorDistance(hexToRgb(color.hex), hexToRgb(targetColor)) <= tolerance.value) {
-                bestMatch = Math.max(bestMatch, color.proportion);
-              }
-            });
-
-            return bestMatch > 0;
+            return true;
           });
 
           // Sort by color match if color filter is active
-          if (colorFilter.value || searchHex.value) {
-            const targetColor = searchHex.value || colorFilter.value;
+          if (cf.clr || cf.searchHex) {
+            const targetColor = cf.searchHex || cf.clr;
             filtered.sort((a, b) => {
               const scoreA = getColorScore(a, targetColor);
               const scoreB = getColorScore(b, targetColor);
@@ -905,7 +919,7 @@
         const loadCSV = async () => {
           try {
             loading.value = true;
-            const response = await fetch('data/hks_buttons_new.csv');
+            const response = await fetch('../data/hks_buttons_new.csv');
             const text = await response.text();
             const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
 
@@ -951,7 +965,6 @@
                 office: g.office
               };
             });
-
             loading.value = false;
           } catch (err) {
             error.value = 'Failed to load data: ' + err.message;
@@ -960,8 +973,17 @@
         };
 
         // Color utilities
+        const normalizeHex = (h) => {
+          if (!h) return '';
+          h = h.trim();
+          if (h[0] !== '#') h = '#' + h;
+          if (h.length === 4) h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+          return h.toLowerCase();
+        };
+
         const hexToRgb = (hex) => {
           if (!hex) return { r: 0, g: 0, b: 0 };
+          hex = normalizeHex(hex);
           hex = hex.replace('#', '');
           if (hex.length === 3) {
             hex = hex.split('').map(ch => ch + ch).join('');
@@ -979,8 +1001,9 @@
 
         const getColorScore = (img, targetColor) => {
           let best = 0;
+          const tol = parseInt(tolerance.value);
           img.colors.forEach(color => {
-            if (colorDistance(hexToRgb(color.hex), hexToRgb(targetColor)) <= tolerance.value) {
+            if (colorDistance(hexToRgb(color.hex), hexToRgb(targetColor)) <= tol) {
               best = Math.max(best, color.proportion);
             }
           });
@@ -1144,12 +1167,13 @@
           showImageModal.value = true;
         };
 
-        const applyFilters = () => {
-          // Reactive computed properties handle filtering automatically
+        const onColorPickerChange = () => {
+          colorPickerUsed.value = true;
         };
 
         const clearAllFilters = () => {
           colorFilter.value = '#ff0000';
+          colorPickerUsed.value = false; // Reset color filter active state
           searchHex.value = '';
           searchTitle.value = '';
           searchMetadata.value = '';
@@ -1209,6 +1233,7 @@
           workspaceItems,
           filteredImages,
           availableDecades,
+          colorFilterObj,
 
           // Theme
           isDarkMode,
@@ -1249,7 +1274,7 @@
           startPanning,
           startDragging,
           handleWheel,
-          applyFilters,
+          onColorPickerChange,
           clearAllFilters,
           selectAllDecades,
           deselectAllDecades,
