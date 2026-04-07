@@ -149,14 +149,7 @@
            
             <button @click="zoomIn" class="ctrl-btn">Zoom In (+)</button>
             <button @click="resetZoom" class="ctrl-btn">Reset View</button>
-            <button
-              @click="downloadWorkspacePNG"
-              :disabled="workspaceItems.length === 0"
-              class="ctrl-btn"
-              title="Download workspace as ultra high-resolution PNG with crisp button details"
-            >
-              PNG
-            </button>
+           
      
           </div>
 
@@ -222,6 +215,13 @@
               style="display: none;"
             >
             <button @click="$refs.fileInput.click()">Import</button>
+             <button
+              @click="downloadWorkspacePNG"
+              :disabled="workspaceItems.length === 0"
+              class="ctrl-btn"
+              title="Download workspace as ultra high-resolution PNG with crisp button details"
+            >🖼️ PNG
+            </button>
             </div>
  
         </div>
@@ -1062,6 +1062,7 @@
 
         const onColorPickerChange = () => {
           colorPickerUsed.value = true;
+          tolerance.value = 40; // Set default tolerance to 40 when color is selected
         };
 
         const clearAllFilters = () => {

@@ -352,7 +352,9 @@ button.clear:hover {
 
 .ctrl-btn {
   padding: 6px 12px;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
+  vertical-align: top;
+ justify-content: center
 }
 
 .current-zoom {
