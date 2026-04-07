@@ -1099,49 +1099,49 @@
         };
 
         // Workspace label sizing to span full width
-        const resizeWorkspaceLabel = () => {
-          const label = workspace.value?.querySelector('#workspaceLabel');
-          if (!label || !workspace.value) return;
+        // const resizeWorkspaceLabel = () => {
+        //   const label = workspace.value?.querySelector('#workspaceLabel');
+        //   if (!label || !workspace.value) return;
 
-          const workspaceWidth = workspace.value.offsetWidth;
-          const workspaceHeight = workspace.value.offsetHeight;
+        //   const workspaceWidth = workspace.value.offsetWidth;
+        //   const workspaceHeight = workspace.value.offsetHeight;
 
-          // Start with a large font size that should fill the width
-          let fontSize = workspaceWidth * 1.2;
+        //   // Start with a large font size that should fill the width
+        //   let fontSize = workspaceWidth * 1.2;
 
-          // Apply the font size temporarily to measure
-          label.style.fontSize = fontSize + 'px';
+        //   // Apply the font size temporarily to measure
+        //   label.style.fontSize = fontSize + 'px';
 
-          // Measure actual text width and adjust to fill exactly 95% of workspace width
-          let textWidth = label.offsetWidth;
-          let attempts = 0;
+        //   // Measure actual text width and adjust to fill exactly 95% of workspace width
+        //   let textWidth = label.offsetWidth;
+        //   let attempts = 0;
 
-          while (textWidth !== 0 && attempts < 5) {
-            const targetWidth = workspaceWidth * 0.95;
-            fontSize = (fontSize * targetWidth) / textWidth;
-            label.style.fontSize = fontSize + 'px';
-            textWidth = label.offsetWidth;
+        //   while (textWidth !== 0 && attempts < 5) {
+        //     const targetWidth = workspaceWidth * 0.95;
+        //     fontSize = (fontSize * targetWidth) / textWidth;
+        //     label.style.fontSize = fontSize + 'px';
+        //     textWidth = label.offsetWidth;
 
-            // Break if we're close enough
-            if (Math.abs(textWidth - targetWidth) < 5) break;
-            attempts++;
-          }
+        //     // Break if we're close enough
+        //     if (Math.abs(textWidth - targetWidth) < 5) break;
+        //     attempts++;
+        //   }
 
-          // Ensure it doesn't exceed height (keep some padding)
-          const textHeight = label.offsetHeight;
-          const maxHeight = workspaceHeight * 0.8;
-          if (textHeight > maxHeight) {
-            const heightBasedSize = (fontSize * maxHeight) / textHeight;
-            label.style.fontSize = heightBasedSize + 'px';
-          }
-        };
+        //   // Ensure it doesn't exceed height (keep some padding)
+        //   const textHeight = label.offsetHeight;
+        //   const maxHeight = workspaceHeight * 0.8;
+        //   if (textHeight > maxHeight) {
+        //     const heightBasedSize = (fontSize * maxHeight) / textHeight;
+        //     label.style.fontSize = heightBasedSize + 'px';
+        //   }
+        // };
 
-        // Watch for zoom changes to resize label
-        watch(zoom, () => {
-          nextTick(() => {
-            resizeWorkspaceLabel();
-          });
-        });
+        // // Watch for zoom changes to resize label
+        // watch(zoom, () => {
+        //   nextTick(() => {
+        //     resizeWorkspaceLabel();
+        //   });
+        // });
 
         // Lifecycle
         onMounted(() => {
