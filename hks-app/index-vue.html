@@ -212,6 +212,7 @@
             Workspace:
             <button @click="saveWorkspace" :disabled="workspaceItems.length === 0">Save</button>
             <button @click="loadWorkspace" :disabled="!hasSavedWorkspace">Restore</button>
+              <button @click="clearWorkspace" :disabled="workspaceItems.length === 0" class="clear">Clear</button>
             <button @click="downloadWorkspace" :disabled="workspaceItems.length === 0">Download</button>
             <input
               ref="fileInput"
@@ -222,9 +223,7 @@
             >
             <button @click="$refs.fileInput.click()">Import</button>
             </div>
-          <div class="workspace-controls">
-            <button @click="clearWorkspace" :disabled="workspaceItems.length === 0" class="clear">Clear All</button>
-          </div>
+ 
         </div>
 
         <!-- Image Grid -->
@@ -857,10 +856,12 @@
               removeContainer: false,
               logging: false, // Disable console logs for cleaner output
               onclone: (clonedDoc) => {
-                // Hide background text in cloned document
-                const clonedLabel = clonedDoc.querySelector('#workspaceLabel');
-                if (clonedLabel) {
-                  clonedLabel.style.display = 'none';
+                // Only hide background text if it should be hidden (when workspace is in light mode)
+                if (!isWorkspaceDark.value) {
+                  const clonedLabel = clonedDoc.querySelector('#workspaceLabel');
+                  if (clonedLabel) {
+                    clonedLabel.style.display = 'none';
+                  }
                 }
               }
             });

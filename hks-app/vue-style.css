@@ -557,22 +557,19 @@ button.clear:hover {
   font-family: 'Syne', sans-serif;
   font-weight: 900;
   font-style: normal;
+  font-size: min(120vw, 1400px);
   color: var(--workspace-label);
   position: absolute;
   line-height: 0.95;
   letter-spacing: -0.05em;
   text-transform: uppercase;
-  left: 50%;
-  top: 50%;
  
-  white-space: nowrap;
-  width: auto;
-  height: auto;
 }
 
 #workspaceLabel {
   font-family: "Public Sans", serif;
-  font-weight: 900;
+   font-size: min(150vw, 1400px);
+   margin-left: 20%;
 }
 
 
