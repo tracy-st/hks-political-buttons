@@ -863,16 +863,6 @@
                     clonedLabel.style.display = 'none';
                   }
                 }
-
-                // Swap in higher resolution images for export without affecting display proportions
-                const clonedImages = clonedDoc.querySelectorAll('.workspace-card img');
-                clonedImages.forEach(img => {
-                  const currentSrc = img.src;
-                  // Replace ,600/ with ,1200/ for double resolution in export
-                  if (currentSrc.includes(',600/')) {
-                    img.src = currentSrc.replace(',600/', ',1200/');
-                  }
-                });
               }
             });
 
