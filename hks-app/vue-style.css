@@ -568,7 +568,7 @@ button.clear:hover {
 
 #workspaceLabel {
   font-family: "Public Sans", serif;
-   font-size: min(150vw, 1400px);
+   font-size: min(150vw / zoom, 1400px)
    margin-left: 20%;
 }
 
