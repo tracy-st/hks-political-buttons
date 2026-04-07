@@ -147,8 +147,16 @@
             
             <div class="current-zoom">{{ Math.round(zoom * 100) }}%</div>
            
-            <button @click="zoomIn" class="ctrl-btn">Zoom In (+)</button> 
+            <button @click="zoomIn" class="ctrl-btn">Zoom In (+)</button>
             <button @click="resetZoom" class="ctrl-btn">Reset View</button>
+            <button
+              @click="downloadWorkspacePNG"
+              :disabled="workspaceItems.length === 0"
+              class="ctrl-btn"
+              title="Download workspace as PNG"
+            >
+              PNG
+            </button>
      
           </div>
 
@@ -215,9 +223,7 @@
             <button @click="$refs.fileInput.click()">Import</button>
             </div>
           <div class="workspace-controls">
-             <button @click="downloadWorkspacePNG" :disabled="workspaceItems.length === 0">Download PNG</button>
             <button @click="clearWorkspace" :disabled="workspaceItems.length === 0" class="clear">Clear All</button>
-          
           </div>
         </div>
 
