@@ -153,7 +153,7 @@
               @click="downloadWorkspacePNG"
               :disabled="workspaceItems.length === 0"
               class="ctrl-btn"
-              title="Download workspace as high-resolution PNG (4K quality)"
+              title="Download workspace as ultra high-resolution PNG with crisp button details"
             >
               PNG
             </button>
@@ -587,9 +587,9 @@
           document.documentElement.setAttribute('data-theme', isDarkMode.value ? 'dark' : 'light');
         };
 
-        const buildIIIFUrl = (iiifId) => {
+        const buildIIIFUrl = (iiifId, size = 300) => {
           if (!iiifId) return '';
-          return `https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/${iiifId}/full/,300/0/default.jpg`;
+          return `https://iiif-cache.digitalhumanities.fas.harvard.edu/iiif/thumb?url=https://ids.lib.harvard.edu/ids/iiif/${iiifId}/full/,${size}/0/default.jpg`;
         };
 
         const loadCSV = async () => {
@@ -633,7 +633,7 @@
                 name: g.title || `Image ${idx + 685}`,
                 width: parseFloat(g.w_cm) || 3,
                 iiifId: g.iiifId,
-                url: buildIIIFUrl(g.iiifId),
+                url: buildIIIFUrl(g.iiifId, 600),
                 colors,
                 earliest_date: g.earliest_date,
                 person: g.person,
@@ -849,20 +849,30 @@
             // Capture the workspace
             const canvas = await html2canvas(workspace.value, {
               backgroundColor: null, // Preserve workspace background
-              scale: 4, // Much higher resolution (4x instead of 2x)
+              scale: 6, // Ultra high resolution (6x for crisp button details)
               useCORS: true,
               allowTaint: true,
-              imageTimeout: 25000, // Increased timeout for larger images
+              imageTimeout: 30000, // Increased timeout for larger images
               removeContainer: false,
               logging: false, // Disable console logs for cleaner output
               onclone: (clonedDoc) => {
-                // Only hide background text if it should be hidden (when workspace is in light mode)
-                if (!isWorkspaceDark.value) {
+                // Only hide background text if it's actually hidden (when workspace is in dark mode)
+                if (isWorkspaceDark.value) {
                   const clonedLabel = clonedDoc.querySelector('#workspaceLabel');
                   if (clonedLabel) {
                     clonedLabel.style.display = 'none';
                   }
                 }
+
+                // Swap in higher resolution images for export without affecting display proportions
+                const clonedImages = clonedDoc.querySelectorAll('.workspace-card img');
+                clonedImages.forEach(img => {
+                  const currentSrc = img.src;
+                  // Replace ,600/ with ,1200/ for double resolution in export
+                  if (currentSrc.includes(',600/')) {
+                    img.src = currentSrc.replace(',600/', ',1200/');
+                  }
+                });
               }
             });
 
@@ -883,12 +893,12 @@
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = `hks-workspace-4k-${new Date().toISOString().split('T')[0]}.png`;
+              a.download = `hks-workspace-ultra-${new Date().toISOString().split('T')[0]}.png`;
               document.body.appendChild(a);
               a.click();
               a.remove();
               URL.revokeObjectURL(url);
-              console.log(`High-resolution PNG exported: ${canvas.width}x${canvas.height} pixels`);
+              console.log(`Ultra high-resolution PNG exported: ${canvas.width}x${canvas.height} pixels`);
             }, 'image/png', 1.0);
 
           } catch (error) {

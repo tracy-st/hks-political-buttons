@@ -445,7 +445,7 @@ button.clear:hover {
 }
 
 .workspace-controls button {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   padding: 6px 10px;
   margin: 0;
 }
@@ -568,7 +568,7 @@ button.clear:hover {
 
 #workspaceLabel {
   font-family: "Public Sans", serif;
-   font-size: min(150vw / zoom, 1400px)
+   font-size: min(150vw, 1400px);
    margin-left: 20%;
 }
 
@@ -685,9 +685,10 @@ td {
   background: var(--bg-elevated);
   color: var(--text-primary);
   font-family: 'DM Mono', monospace;
-  font-size: 0.68rem;
+  font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  line-height: .9rem
   outline: none;
   overflow-y: auto;
 }
