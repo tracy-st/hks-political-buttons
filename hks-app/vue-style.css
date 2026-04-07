@@ -564,7 +564,7 @@ button.clear:hover {
   text-transform: uppercase;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%);
+ 
   white-space: nowrap;
   width: auto;
   height: auto;
