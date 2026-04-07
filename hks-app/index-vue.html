@@ -153,7 +153,7 @@
               @click="downloadWorkspacePNG"
               :disabled="workspaceItems.length === 0"
               class="ctrl-btn"
-              title="Download workspace as PNG"
+              title="Download workspace as high-resolution PNG (4K quality)"
             >
               PNG
             </button>
@@ -850,19 +850,17 @@
             // Capture the workspace
             const canvas = await html2canvas(workspace.value, {
               backgroundColor: null, // Preserve workspace background
-              scale: 2, // Higher resolution
+              scale: 4, // Much higher resolution (4x instead of 2x)
               useCORS: true,
               allowTaint: true,
-              imageTimeout: 15000,
+              imageTimeout: 25000, // Increased timeout for larger images
               removeContainer: false,
+              logging: false, // Disable console logs for cleaner output
               onclone: (clonedDoc) => {
-                // Further fix text in the cloned document
+                // Hide background text in cloned document
                 const clonedLabel = clonedDoc.querySelector('#workspaceLabel');
                 if (clonedLabel) {
-                  clonedLabel.style.fontSize = '1200px';
-                  clonedLabel.style.letterSpacing = '-0.02em';
-                  clonedLabel.style.fontFamily = '"Public Sans", sans-serif';
-                  clonedLabel.style.whiteSpace = 'nowrap';
+                  clonedLabel.style.display = 'none';
                 }
               }
             });
@@ -879,16 +877,17 @@
             if (viewBar) viewBar.style.display = '';
             if (workspaceControls) workspaceControls.style.display = '';
 
-            // Convert to blob and download
+            // Convert to blob and download (maximum quality PNG)
             canvas.toBlob((blob) => {
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = `hks-workspace-${new Date().toISOString().split('T')[0]}.png`;
+              a.download = `hks-workspace-4k-${new Date().toISOString().split('T')[0]}.png`;
               document.body.appendChild(a);
               a.click();
               a.remove();
               URL.revokeObjectURL(url);
+              console.log(`High-resolution PNG exported: ${canvas.width}x${canvas.height} pixels`);
             }, 'image/png', 1.0);
 
           } catch (error) {

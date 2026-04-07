@@ -468,20 +468,21 @@ button.clear:hover {
 }
 
 .workspace.capturing::after {
-  content: 'Capturing...';
+  content: 'Capturing High-Res PNG...';
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   background: var(--accent);
   color: #FAFAF7;
-  padding: 8px 16px;
+  padding: 12px 20px;
   font-family: 'DM Mono', monospace;
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   z-index: 10000;
   pointer-events: none;
+  border: 1px solid var(--accent);
 }
 
 /* Image grid */
